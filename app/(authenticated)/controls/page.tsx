@@ -1,128 +1,152 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useMemo } from "react"
 import { useData } from "@/contexts/data-context"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import type { NistControl } from "@/lib/db"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertCircle, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Filter, MoreHorizontal, Search } from "lucide-react"
-import { RefreshButton } from "@/components/refresh-button"
-import type { Control } from "@/lib/types"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle, Search, Filter, Edit, Save } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function ControlsExplorer() {
   const { controls, loading, error, updateControl } = useData()
+  const { toast } = useToast()
+
   const [searchTerm, setSearchTerm] = useState("")
-  const [filteredControls, setFilteredControls] = useState<Control[]>([])
-  const [functionFilter, setFunctionFilter] = useState<string>("all")
-  const [priorityFilter, setPriorityFilter] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [complianceFilter, setComplianceFilter] = useState<string>("all")
-  const [domainFilter, setDomainFilter] = useState<string>("all")
-  const [uniqueDomains, setUniqueDomains] = useState<string[]>([])
-  const [uniqueFunctions, setUniqueFunctions] = useState<string[]>([])
+  const [functionFilter, setFunctionFilter] = useState<string>("")
+  const [priorityFilter, setPriorityFilter] = useState<string>("")
+  const [statusFilter, setStatusFilter] = useState<string>("")
+  const [complianceFilter, setComplianceFilter] = useState<string>("")
+
+  const [editingControl, setEditingControl] = useState<NistControl | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
   // Extract unique values for filters
-  useEffect(() => {
-    if (controls.length > 0) {
-      const domains = Array.from(new Set(controls.map((c) => c.cybersecurityDomain)))
-        .filter(Boolean)
-        .sort()
-      const functions = Array.from(new Set(controls.map((c) => c.nistFunction)))
-        .filter(Boolean)
-        .sort()
-      setUniqueDomains(domains)
-      setUniqueFunctions(functions)
-    }
+  const nistFunctions = useMemo(() => {
+    const functions = new Set(controls.map((c) => c.nistFunction))
+    return Array.from(functions).sort()
   }, [controls])
 
-  // Filter controls based on search term and filters
-  useEffect(() => {
-    let result = [...controls]
+  // Filter controls based on search and filters
+  const filteredControls = useMemo(() => {
+    return controls.filter((control) => {
+      // Search term filter
+      const searchLower = searchTerm.toLowerCase()
+      const matchesSearch =
+        searchTerm === "" ||
+        control.controlDescription.toLowerCase().includes(searchLower) ||
+        control.nistSubCategoryId.toLowerCase().includes(searchLower) ||
+        control.identifiedRisks.toLowerCase().includes(searchLower)
 
-    // Apply search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase()
-      result = result.filter(
-        (control) =>
-          control.owner
-            ?.toLowerCase()
-            .includes(term) || // Added owner search
-          control.nistFunction.toLowerCase().includes(term) ||
-          control.nistCategoryId.toLowerCase().includes(term) ||
-          control.nistSubCategoryId.toLowerCase().includes(term) ||
-          control.controlDescription.toLowerCase().includes(term) ||
-          control.cybersecurityDomain.toLowerCase().includes(term),
-      )
+      // Function filter
+      const matchesFunction = functionFilter === "" || control.nistFunction === functionFilter
+
+      // Priority filter
+      const matchesPriority = priorityFilter === "" || control.assessmentPriority === priorityFilter
+
+      // Status filter
+      const matchesStatus = statusFilter === "" || control.remediationStatus === statusFilter
+
+      // Compliance filter
+      const matchesCompliance = complianceFilter === "" || control.meetsCriteria === complianceFilter
+
+      return matchesSearch && matchesFunction && matchesPriority && matchesStatus && matchesCompliance
+    })
+  }, [controls, searchTerm, functionFilter, priorityFilter, statusFilter, complianceFilter])
+
+  const handleEditControl = (control: NistControl) => {
+    setEditingControl({ ...control })
+    setIsDialogOpen(true)
+  }
+
+  const handleSaveControl = async () => {
+    if (!editingControl) return
+
+    try {
+      const result = await updateControl(editingControl)
+
+      if (result) {
+        toast({
+          title: "Control Updated",
+          description: "The control has been updated successfully.",
+        })
+        setIsDialogOpen(false)
+      } else {
+        toast({
+          title: "Update Failed",
+          description: "Failed to update the control.",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      console.error("Error updating control:", err)
+      toast({
+        title: "Update Failed",
+        description: "An error occurred while updating the control.",
+        variant: "destructive",
+      })
     }
-
-    // Apply function filter
-    if (functionFilter !== "all") {
-      result = result.filter((control) => control.nistFunction === functionFilter)
-    }
-
-    // Apply priority filter
-    if (priorityFilter !== "all") {
-      result = result.filter((control) => control.assessmentPriority === priorityFilter)
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      result = result.filter((control) => control.remediationStatus === statusFilter)
-    }
-
-    // Apply compliance filter
-    if (complianceFilter !== "all") {
-      result = result.filter((control) => control.meetsCriteria === (complianceFilter === "compliant" ? "Yes" : "No"))
-    }
-
-    // Apply domain filter
-    if (domainFilter !== "all") {
-      result = result.filter((control) => control.cybersecurityDomain === domainFilter)
-    }
-
-    setFilteredControls(result)
-  }, [controls, searchTerm, functionFilter, priorityFilter, statusFilter, complianceFilter, domainFilter])
+  }
 
   const resetFilters = () => {
     setSearchTerm("")
-    setFunctionFilter("all")
-    setPriorityFilter("all")
-    setStatusFilter("all")
-    setComplianceFilter("all")
-    setDomainFilter("all")
+    setFunctionFilter("")
+    setPriorityFilter("")
+    setStatusFilter("")
+    setComplianceFilter("")
   }
 
-  const handleStatusChange = async (controlId: number | undefined, newStatus: string) => {
-    if (!controlId) return
-
-    const control = controls.find((c) => c.id === controlId)
-    if (!control) return
-
-    const updatedControl = {
-      ...control,
-      remediationStatus: newStatus as "Not Started" | "In Progress" | "Completed",
-    }
-
-    await updateControl(updatedControl)
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <h1 className="text-3xl font-bold mb-6">Controls Explorer</h1>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-4 w-1/2" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <Skeleton className="h-10 w-full" />
+              <div className="grid grid-cols-4 gap-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} className="h-10" />
+                ))}
+              </div>
+              <Skeleton className="h-[400px] w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  const handleComplianceChange = async (controlId: number | undefined, compliant: boolean) => {
-    if (!controlId) return
-
-    const control = controls.find((c) => c.id === controlId)
-    if (!control) return
-
-    const updatedControl = {
-      ...control,
-      meetsCriteria: compliant ? "Yes" : "No",
-    }
-
-    await updateControl(updatedControl)
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
+    )
   }
 
   return (
@@ -161,73 +185,82 @@ export default function ControlsExplorer() {
                   <Filter className="mr-2 h-4 w-4" />
                   Reset Filters
                 </Button>
-                <RefreshButton />
               </div>
 
-              {/* Filter Dropdowns */}
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-                <Select value={functionFilter} onValueChange={setFunctionFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="NIST Function" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Functions</SelectItem>
-                    {uniqueFunctions.map((func) => (
-                      <SelectItem key={func} value={func}>
-                        {func}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
+                <div>
+                  <Label htmlFor="function-filter" className="text-xs mb-1 block">
+                    NIST Function
+                  </Label>
+                  <Select value={functionFilter} onValueChange={setFunctionFilter}>
+                    <SelectTrigger id="function-filter">
+                      <SelectValue placeholder="All Functions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Functions</SelectItem>
+                      {nistFunctions.map((func) => (
+                        <SelectItem key={func} value={func}>
+                          {func}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Priority" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Priorities</SelectItem>
-                    <SelectItem value="High">High</SelectItem>
-                    <SelectItem value="Medium">Medium</SelectItem>
-                    <SelectItem value="Low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <Label htmlFor="priority-filter" className="text-xs mb-1 block">
+                    Priority
+                  </Label>
+                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                    <SelectTrigger id="priority-filter">
+                      <SelectValue placeholder="All Priorities" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Priorities</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="Not Started">Not Started</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <Label htmlFor="status-filter" className="text-xs mb-1 block">
+                    Remediation Status
+                  </Label>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger id="status-filter">
+                      <SelectValue placeholder="All Statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="Not Started">Not Started</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                <Select value={complianceFilter} onValueChange={setComplianceFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Compliance" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="compliant">Compliant</SelectItem>
-                    <SelectItem value="non-compliant">Non-Compliant</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div>
+                  <Label htmlFor="compliance-filter" className="text-xs mb-1 block">
+                    Compliance Status
+                  </Label>
+                  <Select value={complianceFilter} onValueChange={setComplianceFilter}>
+                    <SelectTrigger id="compliance-filter">
+                      <SelectValue placeholder="All" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="Yes">Compliant</SelectItem>
+                      <SelectItem value="No">Non-Compliant</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
-                <Select value={domainFilter} onValueChange={setDomainFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Domain" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Domains</SelectItem>
-                    {uniqueDomains.map((domain) => (
-                      <SelectItem key={domain} value={domain}>
-                        {domain}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              {/* Results count */}
+              <div className="text-sm text-muted-foreground">
+                Showing {filteredControls.length} of {controls.length} controls
               </div>
 
               {/* Controls Table */}
@@ -235,101 +268,231 @@ export default function ControlsExplorer() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[180px]">ID</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Domain</TableHead>
+                      <TableHead>Function</TableHead>
+                      <TableHead>Sub-Category ID</TableHead>
                       <TableHead>Priority</TableHead>
+                      <TableHead className="hidden md:table-cell">Control Description</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Compliance</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredControls.map((control) => (
-                      <TableRow key={control.id}>
-                        <TableCell className="font-medium">
-                          <div>{control.nistSubCategoryId}</div>
-                          <div className="text-xs text-muted-foreground">{control.nistFunction}</div>
-                        </TableCell>
-                        <TableCell>{control.owner}</TableCell>
-                        <TableCell>
-                          <div className="max-w-[300px] truncate" title={control.controlDescription}>
-                            {control.controlDescription}
-                          </div>
-                        </TableCell>
-                        <TableCell>{control.cybersecurityDomain}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={
-                              control.assessmentPriority === "High"
-                                ? "border-red-500 text-red-500"
-                                : control.assessmentPriority === "Medium"
-                                  ? "border-amber-500 text-amber-500"
-                                  : "border-green-500 text-green-500"
-                            }
-                          >
-                            {control.assessmentPriority}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={control.remediationStatus}
-                            onValueChange={(value) => handleStatusChange(control.id, value)}
-                          >
-                            <SelectTrigger className="h-8 w-[130px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Not Started">Not Started</SelectItem>
-                              <SelectItem value="In Progress">In Progress</SelectItem>
-                              <SelectItem value="Completed">Completed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={control.meetsCriteria}
-                            onValueChange={(value) => handleComplianceChange(control.id, value === "Yes")}
-                          >
-                            <SelectTrigger className="h-8 w-[100px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Yes">Yes</SelectItem>
-                              <SelectItem value="No">No</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem>View Details</DropdownMenuItem>
-                              <DropdownMenuItem>Edit Control</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                    {filteredControls.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4">
+                          No controls match the current filters
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ) : (
+                      filteredControls.map((control) => (
+                        <TableRow key={control.id}>
+                          <TableCell>
+                            <Badge variant="outline">{control.nistFunction}</Badge>
+                          </TableCell>
+                          <TableCell>{control.nistSubCategoryId}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                control.assessmentPriority === "High"
+                                  ? "destructive"
+                                  : control.assessmentPriority === "Medium"
+                                    ? "default"
+                                    : "outline"
+                              }
+                            >
+                              {control.assessmentPriority}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell max-w-xs truncate">
+                            {control.controlDescription}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                control.remediationStatus === "Completed"
+                                  ? "success"
+                                  : control.remediationStatus === "In Progress"
+                                    ? "default"
+                                    : "destructive"
+                              }
+                            >
+                              {control.remediationStatus}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={control.meetsCriteria === "Yes" ? "success" : "destructive"}>
+                              {control.meetsCriteria}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditControl(control)}>
+                              <Edit className="h-4 w-4" />
+                              <span className="sr-only">Edit</span>
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
                   </TableBody>
                 </Table>
               </div>
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <p className="text-sm text-muted-foreground">
-            {filteredControls.length} of {controls.length} controls
-          </p>
-        </CardFooter>
       </Card>
+
+      {/* Edit Control Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Edit Control</DialogTitle>
+            <DialogDescription>Update the control information and remediation status.</DialogDescription>
+          </DialogHeader>
+
+          {editingControl && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="nist-function">NIST Function</Label>
+                  <Input
+                    id="nist-function"
+                    value={editingControl.nistFunction}
+                    onChange={(e) => setEditingControl({ ...editingControl, nistFunction: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="nist-category">NIST Category & ID</Label>
+                  <Input
+                    id="nist-category"
+                    value={editingControl.nistCategoryId}
+                    onChange={(e) => setEditingControl({ ...editingControl, nistCategoryId: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="nist-subcategory">NIST Sub-Category & ID</Label>
+                  <Input
+                    id="nist-subcategory"
+                    value={editingControl.nistSubCategoryId}
+                    onChange={(e) => setEditingControl({ ...editingControl, nistSubCategoryId: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-2">
+                  <Label htmlFor="assessment-priority">Assessment Priority</Label>
+                  <Select
+                    value={editingControl.assessmentPriority}
+                    onValueChange={(value) =>
+                      setEditingControl({ ...editingControl, assessmentPriority: value as "High" | "Medium" | "Low" })
+                    }
+                  >
+                    <SelectTrigger id="assessment-priority">
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="Low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="control-description">Control Description</Label>
+                <Textarea
+                  id="control-description"
+                  value={editingControl.controlDescription}
+                  onChange={(e) => setEditingControl({ ...editingControl, controlDescription: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="cybersecurity-domain">Cybersecurity Domain</Label>
+                  <Input
+                    id="cybersecurity-domain"
+                    value={editingControl.cybersecurityDomain}
+                    onChange={(e) => setEditingControl({ ...editingControl, cybersecurityDomain: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="meets-criteria">Meets Criteria</Label>
+                  <Select
+                    value={editingControl.meetsCriteria}
+                    onValueChange={(value) =>
+                      setEditingControl({ ...editingControl, meetsCriteria: value as "Yes" | "No" })
+                    }
+                  >
+                    <SelectTrigger id="meets-criteria">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Yes">Yes</SelectItem>
+                      <SelectItem value="No">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="identified-risks">Identified Risks</Label>
+                <Textarea
+                  id="identified-risks"
+                  value={editingControl.identifiedRisks}
+                  onChange={(e) => setEditingControl({ ...editingControl, identifiedRisks: e.target.value })}
+                  rows={2}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="risk-details">Risk Details</Label>
+                <Textarea
+                  id="risk-details"
+                  value={editingControl.riskDetails}
+                  onChange={(e) => setEditingControl({ ...editingControl, riskDetails: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="remediation-status">Remediation Status</Label>
+                <Select
+                  value={editingControl.remediationStatus}
+                  onValueChange={(value) =>
+                    setEditingControl({
+                      ...editingControl,
+                      remediationStatus: value as "Not Started" | "In Progress" | "Completed",
+                    })
+                  }
+                >
+                  <SelectTrigger id="remediation-status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Not Started">Not Started</SelectItem>
+                    <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveControl}>
+              <Save className="mr-2 h-4 w-4" />
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

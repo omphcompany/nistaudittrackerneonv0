@@ -124,18 +124,9 @@ export default function DataManagement() {
         }
       } catch (err) {
         console.error("Error uploading file:", err)
-        const errorMessage = err instanceof Error ? err.message : "Unknown error"
-
-        // Check if it's an authentication error
-        if (errorMessage.includes("Authentication required")) {
-          setUploadError("Authentication required. Please log in to continue.")
-          // Redirect to login page
-          setTimeout(() => {
-            window.location.href = "/login"
-          }, 2000)
-        } else {
-          setUploadError(`Error parsing Excel file: ${errorMessage}. Please check the file format.`)
-        }
+        setUploadError(
+          `Error parsing Excel file: ${err instanceof Error ? err.message : "Unknown error"}. Please check the file format.`,
+        )
       } finally {
         setIsUploading(false)
         // Reset the file input
@@ -177,18 +168,7 @@ export default function DataManagement() {
       }
     } catch (err) {
       console.error("Error loading sample data:", err)
-      const errorMessage = err instanceof Error ? err.message : "Unknown error"
-
-      // Check if it's an authentication error
-      if (errorMessage.includes("Authentication required")) {
-        setUploadError("Authentication required. Please log in to continue.")
-        // Redirect to login page
-        setTimeout(() => {
-          window.location.href = "/login"
-        }, 2000)
-      } else {
-        setUploadError(`Error loading sample data: ${errorMessage}`)
-      }
+      setUploadError("Error loading sample data.")
     } finally {
       setIsLoading(false)
     }
@@ -277,14 +257,6 @@ export default function DataManagement() {
           </Button>
         </div>
       </div>
-
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
 
       <Tabs defaultValue="import" className="w-full">
         <TabsList className={`grid w-full grid-cols-3 ${isDarkTheme ? "" : "bg-black"}`}>
@@ -392,7 +364,6 @@ export default function DataManagement() {
                 <h3 className="text-lg font-medium mb-2">Expected Format</h3>
                 <p className="text-sm text-muted-foreground mb-2">Your Excel file should have the following columns:</p>
                 <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                  <li>Owner</li>
                   <li>NIST Function</li>
                   <li>NIST Category & ID</li>
                   <li>NIST Sub-Category & ID</li>

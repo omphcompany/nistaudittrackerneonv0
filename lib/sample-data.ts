@@ -10,9 +10,6 @@ export function loadSampleData(): NistControl[] {
   // Generate a random suffix to ensure uniqueness
   const randomSuffix = Math.floor(Math.random() * 10000)
 
-  // Owners
-  const owners = ["Contoso Corporation", "Acme Corporation"]
-
   // NIST Functions
   const nistFunctions = ["Govern (GV)", "Identify (ID)", "Protect (PR)", "Detect (DE)", "Respond (RS)", "Recover (RC)"]
 
@@ -82,11 +79,8 @@ export function loadSampleData(): NistControl[] {
   // Generate sample controls
   const sampleControls: NistControl[] = []
 
-  // Generate exactly 50 sample controls, 25 for each owner
+  // Generate at least 50 sample controls
   for (let i = 0; i < 50; i++) {
-    // Alternate between owners to ensure equal distribution
-    const owner = owners[i % 2]
-
     // Select random values for each field
     const nistFunction = nistFunctions[Math.floor(Math.random() * nistFunctions.length)]
 
@@ -109,18 +103,17 @@ export function loadSampleData(): NistControl[] {
     // Create a control with a unique ID based on timestamp and random suffix
     sampleControls.push({
       id: i + 1 + randomSuffix * 1000, // Ensure unique IDs across sample data loads
-      owner, // Add owner information
       nistFunction,
       nistCategoryId: `${category.id} - ${category.name}`,
       nistSubCategoryId: `${subcategory.id} - ${i}`, // Add index to ensure uniqueness
-      assessmentPriority: priority as "High" | "Medium" | "Low",
+      assessmentPriority: priority,
       controlDescription: `${subcategory.description} - Batch ${randomSuffix}`, // Add batch number to description
       cybersecurityDomain: domain,
-      meetsCriteria: meetsCriteria as "Yes" | "No",
+      meetsCriteria,
       identifiedRisks: meetsCriteria === "No" ? `Sample risk for ${subcategory.id} - ${timestamp.toISOString()}` : "",
       riskDetails:
         meetsCriteria === "No" ? `Detailed risk information for ${subcategory.id} - ${timestamp.toISOString()}` : "",
-      remediationStatus: remediationStatus as "Not Started" | "In Progress" | "Completed",
+      remediationStatus,
       lastUpdated: timestamp,
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -128,10 +121,6 @@ export function loadSampleData(): NistControl[] {
   }
 
   console.log(`Generated ${sampleControls.length} sample controls with timestamp ${timestamp.toISOString()}`)
-  console.log(
-    `Owner distribution: Contoso Corporation: ${sampleControls.filter((c) => c.owner === "Contoso Corporation").length}, Acme Corporation: ${sampleControls.filter((c) => c.owner === "Acme Corporation").length}`,
-  )
-
   return sampleControls
 }
 
@@ -145,17 +134,16 @@ export function parseFullDataset(text: string): NistControl[] {
     const columns = line.split("\t")
 
     return {
-      owner: columns[0] || "Unknown", // Add owner field
-      nistFunction: columns[1] || "",
-      nistCategoryId: columns[2] || "",
-      nistSubCategoryId: columns[3] || "",
-      assessmentPriority: (columns[4] || "Medium") as "High" | "Medium" | "Low",
-      controlDescription: columns[5] || "",
-      cybersecurityDomain: columns[6] || "",
-      meetsCriteria: (columns[7] || "No") as "Yes" | "No",
-      identifiedRisks: columns[8] || "",
-      riskDetails: columns[9] || "",
-      remediationStatus: (columns[10] || "Not Started") as "Not Started" | "In Progress" | "Completed",
+      nistFunction: columns[0] || "",
+      nistCategoryId: columns[1] || "",
+      nistSubCategoryId: columns[2] || "",
+      assessmentPriority: (columns[3] || "Medium") as "High" | "Medium" | "Low",
+      controlDescription: columns[4] || "",
+      cybersecurityDomain: columns[5] || "",
+      meetsCriteria: (columns[6] || "No") as "Yes" | "No",
+      identifiedRisks: columns[7] || "",
+      riskDetails: columns[8] || "",
+      remediationStatus: (columns[9] || "Not Started") as "Not Started" | "In Progress" | "Completed",
       lastUpdated: new Date(),
     }
   })
@@ -165,9 +153,6 @@ export function parseFullDataset(text: string): NistControl[] {
 export function generateSampleData(): NistControl[] {
   // Sample NIST Functions
   const nistFunctions = ["ID", "PR", "DE", "RS", "RC", "GV"]
-
-  // Owners
-  const owners = ["Contoso Corporation", "Acme Corporation"]
 
   // Sample Cybersecurity Domains
   const domains = [
@@ -196,9 +181,6 @@ export function generateSampleData(): NistControl[] {
       for (let subIndex = 1; subIndex <= 5; subIndex++) {
         const subCategoryId = `${categoryId}.${subIndex}`
 
-        // Alternate between owners to ensure equal distribution
-        const owner = owners[(funcIndex + catIndex + subIndex) % 2]
-
         // Determine compliance and remediation status with some variation
         const meetsCriteria = Math.random() > 0.4 ? "Yes" : "No"
         let remediationStatus: "Not Started" | "In Progress" | "Completed"
@@ -225,7 +207,6 @@ export function generateSampleData(): NistControl[] {
 
         // Create the control object
         const control: NistControl = {
-          owner, // Add owner information
           nistFunction: func,
           nistCategoryId: `${func}.${catIndex} - ${getFunctionName(func)} Category ${catIndex}`,
           nistSubCategoryId: subCategoryId,

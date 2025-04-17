@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ChartContainer, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, Cell, XAxis, YAxis, Legend, Tooltip } from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Bar, BarChart, Cell, ResponsiveContainer, XAxis, YAxis, Legend } from "recharts"
 
 export default function ComplianceReport() {
   const { controls, loading, error } = useData()
@@ -197,18 +197,20 @@ export default function ComplianceReport() {
               }}
               className="h-[300px]"
             >
-              <BarChart
-                data={reportData.byFunction}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" />
-                <Tooltip content={<ChartTooltipContent />} />
-                <Legend />
-                <Bar dataKey="compliant" stackId="a" fill="#10b981" name="Compliant" />
-                <Bar dataKey="nonCompliant" stackId="a" fill="#ef4444" name="Non-Compliant" />
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={reportData.byFunction}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="compliant" stackId="a" fill="#10b981" name="Compliant" />
+                  <Bar dataKey="nonCompliant" stackId="a" fill="#ef4444" name="Non-Compliant" />
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
@@ -225,16 +227,18 @@ export default function ComplianceReport() {
               }}
               className="h-[300px]"
             >
-              <BarChart data={reportData.byFunction} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 100]} />
-                <Tooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="complianceRate" fill="#3b82f6" name="Compliance Rate (%)">
-                  {reportData.byFunction.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reportData.byFunction} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 100]} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="complianceRate" fill="#3b82f6" name="Compliance Rate (%)">
+                    {reportData.byFunction.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
@@ -252,18 +256,20 @@ export default function ComplianceReport() {
               }}
               className="h-[300px]"
             >
-              <BarChart
-                data={reportData.byDomain.slice(0, 5)}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={150} />
-                <Tooltip content={<ChartTooltipContent />} />
-                <Legend />
-                <Bar dataKey="compliant" stackId="a" fill="#10b981" name="Compliant" />
-                <Bar dataKey="nonCompliant" stackId="a" fill="#ef4444" name="Non-Compliant" />
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={reportData.byDomain.slice(0, 5)}
+                  layout="vertical"
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={150} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend />
+                  <Bar dataKey="compliant" stackId="a" fill="#10b981" name="Compliant" />
+                  <Bar dataKey="nonCompliant" stackId="a" fill="#ef4444" name="Non-Compliant" />
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>
@@ -280,12 +286,14 @@ export default function ComplianceReport() {
               }}
               className="h-[300px]"
             >
-              <BarChart data={reportData.byCategory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
-                <YAxis domain={[0, 100]} />
-                <Tooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="complianceRate" fill="#3b82f6" name="Compliance Rate (%)" />
-              </BarChart>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={reportData.byCategory} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+                  <YAxis domain={[0, 100]} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="complianceRate" fill="#3b82f6" name="Compliance Rate (%)" />
+                </BarChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </CardContent>
         </Card>

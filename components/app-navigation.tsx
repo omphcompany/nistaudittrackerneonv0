@@ -10,14 +10,7 @@ export function AppNavigation() {
   const pathname = usePathname()
   const { logout } = useAuth()
 
-  const isActive = (path: string) => {
-    // Extract the last part of the path to handle route groups like (authenticated)
-    const currentPath = pathname
-    const pathSegments = path.split("/")
-    const lastSegment = pathSegments[pathSegments.length - 1]
-
-    return currentPath.endsWith(lastSegment)
-  }
+  const isActive = (path: string) => pathname === path
 
   const mainNavItems = [
     { name: "Introduction", href: "/introduction", icon: Home },

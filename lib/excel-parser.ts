@@ -35,7 +35,6 @@ export async function parseExcelFile(file: File): Promise<NistControl[]> {
 
         // Map to our data structure
         const controls: NistControl[] = jsonData.map((row: any) => ({
-          owner: row["Owner"] || "", // Added Owner field
           nistFunction: row["NIST Function"] || "",
           nistCategoryId: row["NIST Category & ID"] || "",
           nistSubCategoryId: row["NIST Sub-Category & ID"] || "",
@@ -72,7 +71,6 @@ export function exportToExcel(controls: NistControl[]): void {
   // Convert controls to worksheet data
   const worksheet = utils.json_to_sheet(
     controls.map((control) => ({
-      Owner: control.owner, // Added Owner field
       "NIST Function": control.nistFunction,
       "NIST Category & ID": control.nistCategoryId,
       "NIST Sub-Category & ID": control.nistSubCategoryId,
