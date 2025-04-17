@@ -59,7 +59,8 @@
     "vaul": "latest",
     "zod": "^3.24.1",
     "xlsx": "latest",
-    "@neondatabase/serverless": "latest"
+    "@neondatabase/serverless": "latest",
+    "idb": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",

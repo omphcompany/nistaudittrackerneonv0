@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { initDb, checkDbExists } from "@/lib/db"
 import { useToast } from "@/components/ui/use-toast"
 
 export function DbInitializer() {
@@ -9,57 +10,48 @@ export function DbInitializer() {
   const { toast } = useToast()
 
   useEffect(() => {
-    const initDb = async () => {
+    const initialize = async () => {
       try {
-        // Only attempt to initialize the database in production
-        // In development/preview, we'll use mock data
-        if (process.env.NODE_ENV === "production") {
-          console.log("Initializing database in production environment...")
-          const response = await fetch("/api/init-db")
-          const data = await response.json()
+        console.log("Checking if database exists...")
+        const exists = await checkDbExists()
 
-          if (!response.ok) {
-            throw new Error(`Failed to initialize database: ${data.error || response.statusText}`)
-          }
+        if (!exists) {
+          console.log("Database doesn't exist, initializing...")
+          const result = await initDb()
+          console.log("Database initialization result:", result)
 
-          console.log("Database initialization result:", data)
-          setInitialized(true)
-
-          toast({
-            title: "Database Connected",
-            description: "Successfully connected to the database",
-          })
-        } else {
-          // In development/preview, just log and set as initialized
-          console.log("Running in development/preview mode - using mock data")
-          setInitialized(true)
-
-          // Only show toast in development
-          if (process.env.NODE_ENV === "development") {
+          if (result) {
+            setInitialized(true)
             toast({
-              title: "Development Mode",
-              description: "Using mock data (no database connection)",
+              title: "Database Initialized",
+              description: "Local database has been successfully initialized",
+            })
+          } else {
+            setError("Failed to initialize database")
+            toast({
+              title: "Database Error",
+              description: "Failed to initialize local database",
+              variant: "destructive",
             })
           }
+        } else {
+          console.log("Database already exists")
+          setInitialized(true)
         }
       } catch (err) {
         console.error("Error initializing database:", err)
-        const errorMessage = err instanceof Error ? err.message : "Unknown database error"
+        const errorMessage = err instanceof Error ? err.message : "Unknown error initializing database"
         setError(errorMessage)
 
-        // Show error toast but don't block the application
         toast({
-          title: "Using Local Data",
-          description: "Database connection unavailable - using browser storage",
-          variant: "default", // Changed from destructive to default
+          title: "Database Error",
+          description: errorMessage,
+          variant: "destructive",
         })
-
-        // Still set as initialized so the app can continue with local data
-        setInitialized(true)
       }
     }
 
-    initDb()
+    initialize()
   }, [toast])
 
   // This component doesn't render anything visible

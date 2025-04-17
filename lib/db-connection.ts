@@ -225,3 +225,55 @@ export async function testConnection(): Promise<boolean> {
     return false
   }
 }
+
+// This file provides a wrapper around the IndexedDB database
+// to ensure it's only accessed in the browser environment
+
+// Import the database functions only in the browser
+import {
+  initDb as browserInitDb,
+  addControls as browserAddControls,
+  getControls as browserGetControls,
+  getControlById as browserGetControlById,
+  updateControl as browserUpdateControl,
+  deleteControl as browserDeleteControl,
+  clearAllData as browserClearAllData,
+  getDbInfo as browserGetDbInfo,
+  getControlStats as browserGetControlStats,
+} from "./db"
+
+// Create server-side stubs that return empty results
+const serverStub = {
+  initDb: async () => false,
+  addControls: async () => false,
+  getControls: async () => [],
+  getControlById: async () => null,
+  updateControl: async () => false,
+  deleteControl: async () => false,
+  clearAllData: async () => false,
+  getDbInfo: async () => ({ isInitialized: false, controlsCount: 0, lastUpdated: null }),
+  getControlStats: async () => ({
+    totalControls: 0,
+    compliantControls: 0,
+    nonCompliantControls: 0,
+    complianceRate: 0,
+    highPriorityControls: 0,
+    mediumPriorityControls: 0,
+    lowPriorityControls: 0,
+    notStartedControls: 0,
+    inProgressControls: 0,
+    completedControls: 0,
+    functionDistribution: {},
+  }),
+}
+
+// Export the appropriate functions based on environment
+export const initDb = isBrowser ? browserInitDb : serverStub.initDb
+export const addControls = isBrowser ? browserAddControls : serverStub.addControls
+export const getControls = isBrowser ? browserGetControls : serverStub.getControls
+export const getControlById = isBrowser ? browserGetControlById : serverStub.getControlById
+export const updateControl = isBrowser ? browserUpdateControl : serverStub.updateControl
+export const deleteControl = isBrowser ? browserDeleteControl : serverStub.deleteControl
+export const clearAllData = isBrowser ? browserClearAllData : serverStub.clearAllData
+export const getDbInfo = isBrowser ? browserGetDbInfo : serverStub.getDbInfo
+export const getControlStats = isBrowser ? browserGetControlStats : serverStub.getControlStats
