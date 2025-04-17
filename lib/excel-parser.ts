@@ -45,6 +45,7 @@ export async function parseExcelFile(file: File): Promise<NistControl[]> {
           identifiedRisks: row["Identified Risks"] || "",
           riskDetails: row["Risk Details"] || "",
           remediationStatus: row["Remediation Status"] || "Not Started",
+          owner: row["Owner"] || "Unassigned", // Added owner field
           lastUpdated: currentTime,
           createdAt: currentTime,
           updatedAt: currentTime,
@@ -70,19 +71,20 @@ export async function parseExcelFile(file: File): Promise<NistControl[]> {
 export function exportToExcel(controls: NistControl[]): void {
   // Convert controls to worksheet data
   const worksheet = utils.json_to_sheet(
-      controls.map((control) => ({
-        "NIST Function": control.nistFunction,
-        "NIST Category & ID": control.nistCategoryId,
-        "NIST Sub-Category & ID": control.nistSubCategoryId,
-        "Assessment Priority": control.assessmentPriority,
-        "Control Description": control.controlDescription,
-        "Cybersecurity Domain": control.cybersecurityDomain,
-        "Meets Criteria (Yes/No)": control.meetsCriteria,
-        "Identified Risks": control.identifiedRisks,
-        "Risk Details": control.riskDetails,
-        "Remediation Status": control.remediationStatus,
-        "Last Updated": control.lastUpdated.toISOString().split("T")[0],
-      })),
+    controls.map((control) => ({
+      "NIST Function": control.nistFunction,
+      "NIST Category & ID": control.nistCategoryId,
+      "NIST Sub-Category & ID": control.nistSubCategoryId,
+      "Assessment Priority": control.assessmentPriority,
+      "Control Description": control.controlDescription,
+      "Cybersecurity Domain": control.cybersecurityDomain,
+      "Meets Criteria (Yes/No)": control.meetsCriteria,
+      "Identified Risks": control.identifiedRisks,
+      "Risk Details": control.riskDetails,
+      "Remediation Status": control.remediationStatus,
+      Owner: control.owner, // Added owner field
+      "Last Updated": control.lastUpdated.toISOString().split("T")[0],
+    })),
   )
 
   // Create workbook and add worksheet

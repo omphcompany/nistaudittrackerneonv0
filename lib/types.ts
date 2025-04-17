@@ -10,6 +10,7 @@ export interface NistControl {
   identifiedRisks: string
   riskDetails: string
   remediationStatus: "Not Started" | "In Progress" | "Completed"
+  owner: string // Added owner field
   lastUpdated: Date
   createdAt?: Date
   updatedAt?: Date

@@ -214,3 +214,23 @@ export async function getDatabaseInfo() {
     }
   }
 }
+
+// Add the following exports at the end of the file:
+
+// Export aliases for the functions with the expected names
+export const initDb = initializeDatabase
+export const getDbInfo = getDatabaseInfo
+
+// Add the getControls function
+export async function getControls() {
+  try {
+    const result = await executeQuery(`
+      SELECT * FROM "NistControl" 
+      ORDER BY "lastUpdated" DESC
+    `)
+    return result.rows
+  } catch (error) {
+    console.error("Error fetching controls:", error)
+    return []
+  }
+}

@@ -64,101 +64,101 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [lastRefreshTime])
 
   const addControls = useCallback(
-      async (newControls: Control[]): Promise<boolean> => {
-        try {
-          console.log(`Adding ${newControls.length} controls...`)
-          const startTime = performance.now()
+    async (newControls: Control[]): Promise<boolean> => {
+      try {
+        console.log(`Adding ${newControls.length} controls...`)
+        const startTime = performance.now()
 
-          const response = await fetch("/api/controls", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(newControls),
-          })
+        const response = await fetch("/api/controls", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(newControls),
+        })
 
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error("Error adding controls:", errorData)
-            throw new Error(errorData.error || "Failed to add controls")
-          }
-
-          const endTime = performance.now()
-          console.log(`Added controls in ${(endTime - startTime).toFixed(2)}ms`)
-
-          await refreshData()
-          return true
-        } catch (err) {
-          console.error("Error in addControls:", err)
-          setError(err instanceof Error ? err.message : "An unknown error occurred")
-          return false
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error("Error adding controls:", errorData)
+          throw new Error(errorData.error || "Failed to add controls")
         }
-      },
-      [refreshData],
+
+        const endTime = performance.now()
+        console.log(`Added controls in ${(endTime - startTime).toFixed(2)}ms`)
+
+        await refreshData()
+        return true
+      } catch (err) {
+        console.error("Error in addControls:", err)
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        return false
+      }
+    },
+    [refreshData],
   )
 
   const updateControl = useCallback(
-      async (control: Control): Promise<boolean> => {
-        try {
-          console.log(`Updating control ${control.id}...`)
-          const startTime = performance.now()
+    async (control: Control): Promise<boolean> => {
+      try {
+        console.log(`Updating control ${control.id}...`)
+        const startTime = performance.now()
 
-          const response = await fetch(`/api/controls/${control.id}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(control),
-          })
+        const response = await fetch(`/api/controls/${control.id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(control),
+        })
 
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error("Error updating control:", errorData)
-            throw new Error(errorData.error || "Failed to update control")
-          }
-
-          const endTime = performance.now()
-          console.log(`Updated control in ${(endTime - startTime).toFixed(2)}ms`)
-
-          await refreshData()
-          return true
-        } catch (err) {
-          console.error("Error in updateControl:", err)
-          setError(err instanceof Error ? err.message : "An unknown error occurred")
-          return false
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error("Error updating control:", errorData)
+          throw new Error(errorData.error || "Failed to update control")
         }
-      },
-      [refreshData],
+
+        const endTime = performance.now()
+        console.log(`Updated control in ${(endTime - startTime).toFixed(2)}ms`)
+
+        await refreshData()
+        return true
+      } catch (err) {
+        console.error("Error in updateControl:", err)
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        return false
+      }
+    },
+    [refreshData],
   )
 
   const deleteControl = useCallback(
-      async (id: number): Promise<boolean> => {
-        try {
-          console.log(`Deleting control ${id}...`)
-          const startTime = performance.now()
+    async (id: number): Promise<boolean> => {
+      try {
+        console.log(`Deleting control ${id}...`)
+        const startTime = performance.now()
 
-          const response = await fetch(`/api/controls/${id}`, {
-            method: "DELETE",
-          })
+        const response = await fetch(`/api/controls/${id}`, {
+          method: "DELETE",
+        })
 
-          if (!response.ok) {
-            const errorData = await response.json()
-            console.error("Error deleting control:", errorData)
-            throw new Error(errorData.error || "Failed to delete control")
-          }
-
-          const endTime = performance.now()
-          console.log(`Deleted control in ${(endTime - startTime).toFixed(2)}ms`)
-
-          await refreshData()
-          return true
-        } catch (err) {
-          console.error("Error in deleteControl:", err)
-          setError(err instanceof Error ? err.message : "An unknown error occurred")
-          return false
+        if (!response.ok) {
+          const errorData = await response.json()
+          console.error("Error deleting control:", errorData)
+          throw new Error(errorData.error || "Failed to delete control")
         }
-      },
-      [refreshData],
+
+        const endTime = performance.now()
+        console.log(`Deleted control in ${(endTime - startTime).toFixed(2)}ms`)
+
+        await refreshData()
+        return true
+      } catch (err) {
+        console.error("Error in deleteControl:", err)
+        setError(err instanceof Error ? err.message : "An unknown error occurred")
+        return false
+      }
+    },
+    [refreshData],
   )
 
   const clearAllData = useCallback(async (): Promise<boolean> => {
@@ -208,21 +208,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }, [refreshData])
 
   return (
-      <DataContext.Provider
-          value={{
-            controls,
-            loading,
-            error,
-            refreshData,
-            addControls,
-            updateControl,
-            deleteControl,
-            clearAllData,
-            lastRefreshTime,
-          }}
-      >
-        {children}
-      </DataContext.Provider>
+    <DataContext.Provider
+      value={{
+        controls,
+        loading,
+        error,
+        refreshData,
+        addControls,
+        updateControl,
+        deleteControl,
+        clearAllData,
+        lastRefreshTime,
+      }}
+    >
+      {children}
+    </DataContext.Provider>
   )
 }
 

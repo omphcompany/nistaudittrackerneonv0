@@ -1,243 +1,184 @@
 import type { NistControl } from "./types"
 
-// Function to generate sample NIST controls data
+// Function to generate a random date within the last 30 days
+function getRandomDate() {
+  const now = new Date()
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const randomTime = thirtyDaysAgo.getTime() + Math.random() * (now.getTime() - thirtyDaysAgo.getTime())
+  return new Date(randomTime)
+}
+
+// Function to generate a random ID
+function generateId() {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+}
+
+// Function to load sample data
 export function loadSampleData(): NistControl[] {
   console.log("Loading sample data...")
 
-  // Generate a timestamp to make each batch of sample data unique
-  const timestamp = new Date()
+  // Define the owners
+  const owners = ["Acme Corporation", "Contoso Corporation"]
 
-  // Generate a random suffix to ensure uniqueness
-  const randomSuffix = Math.floor(Math.random() * 10000)
-
-  // NIST Functions
-  const nistFunctions = ["Govern (GV)", "Identify (ID)", "Protect (PR)", "Detect (DE)", "Respond (RS)", "Recover (RC)"]
-
-  // NIST Categories
-  const nistCategories = [
-    { function: "Govern (GV)", id: "GV.1", name: "Cybersecurity Risk Management Strategy" },
-    { function: "Govern (GV)", id: "GV.2", name: "Risk Management Processes" },
-    { function: "Govern (GV)", id: "GV.3", name: "Supply Chain Risk Management" },
-    { function: "Identify (ID)", id: "ID.1", name: "Asset Management" },
-    { function: "Identify (ID)", id: "ID.2", name: "Business Environment" },
-    { function: "Identify (ID)", id: "ID.3", name: "Risk Assessment" },
-    { function: "Protect (PR)", id: "PR.1", name: "Identity Management and Access Control" },
-    { function: "Protect (PR)", id: "PR.2", name: "Data Security" },
-    { function: "Protect (PR)", id: "PR.3", name: "Information Protection Processes and Procedures" },
-    { function: "Detect (DE)", id: "DE.1", name: "Anomalies and Events" },
-    { function: "Detect (DE)", id: "DE.2", name: "Security Continuous Monitoring" },
-    { function: "Respond (RS)", id: "RS.1", name: "Response Planning" },
-    { function: "Respond (RS)", id: "RS.2", name: "Communications" },
-    { function: "Recover (RC)", id: "RC.1", name: "Recovery Planning" },
-    { function: "Recover (RC)", id: "RC.2", name: "Improvements" },
-  ]
-
-  // NIST Subcategories
-  const nistSubcategories = [
-    {
-      category: "GV.1",
-      id: "GV.1.1",
-      description: "Establish and communicate cybersecurity risk management priorities",
-    },
-    { category: "GV.1", id: "GV.1.2", description: "Establish and maintain cybersecurity roles and responsibilities" },
-    { category: "GV.2", id: "GV.2.1", description: "Establish and maintain cybersecurity risk management processes" },
-    { category: "ID.1", id: "ID.1.1", description: "Inventory physical devices and systems" },
-    { category: "ID.1", id: "ID.1.2", description: "Inventory software platforms and applications" },
-    { category: "ID.2", id: "ID.2.1", description: "Identify and communicate priorities for organizational mission" },
-    { category: "PR.1", id: "PR.1.1", description: "Establish and maintain identities and credentials" },
-    { category: "PR.1", id: "PR.1.2", description: "Manage and control physical access to assets" },
-    { category: "PR.2", id: "PR.2.1", description: "Protect data-at-rest" },
-    { category: "PR.2", id: "PR.2.2", description: "Protect data-in-transit" },
-    { category: "DE.1", id: "DE.1.1", description: "Establish and maintain a baseline of network operations" },
-    { category: "DE.2", id: "DE.2.1", description: "Monitor the network and information systems" },
-    { category: "RS.1", id: "RS.1.1", description: "Execute response processes and procedures" },
-    { category: "RS.2", id: "RS.2.1", description: "Coordinate with stakeholders during response" },
-    { category: "RC.1", id: "RC.1.1", description: "Execute recovery processes and procedures" },
-    { category: "RC.2", id: "RC.2.1", description: "Incorporate lessons learned into recovery strategy" },
-  ]
-
-  // Cybersecurity domains
-  const domains = [
-    "Network Security",
-    "Application Security",
-    "Cloud Security",
-    "Data Protection",
-    "Identity and Access Management",
-    "Security Operations",
-    "Incident Response",
-    "Business Continuity",
-    "Risk Management",
-    "Compliance",
-  ]
-
-  // Assessment priorities
-  const priorities = ["High", "Medium", "Low"]
-
-  // Remediation statuses
-  const remediationStatuses = ["Not Started", "In Progress", "Completed"]
-
-  // Generate sample controls
+  // Create an array to hold the sample controls
   const sampleControls: NistControl[] = []
 
-  // Generate at least 50 sample controls
+  // Generate 50 sample controls with alternating owners
   for (let i = 0; i < 50; i++) {
-    // Select random values for each field
-    const nistFunction = nistFunctions[Math.floor(Math.random() * nistFunctions.length)]
+    // Assign the first 25 controls to Acme Corporation and the next 25 to Contoso Corporation
+    const owner = i < 25 ? owners[0] : owners[1]
 
-    // Filter categories by the selected function
-    const functionCategories = nistCategories.filter((cat) => cat.function === nistFunction)
-    const category = functionCategories[Math.floor(Math.random() * functionCategories.length)]
+    const control: NistControl = {
+      id: generateId(),
+      owner: owner,
+      nistFunction: ["Identify", "Protect", "Detect", "Respond", "Recover"][Math.floor(Math.random() * 5)],
+      nistCategoryId: `ID.${Math.floor(Math.random() * 10) + 1} - Asset Management`,
+      nistSubCategoryId: `ID.AM-${Math.floor(Math.random() * 6) + 1} - Physical devices and systems are inventoried`,
+      assessmentPriority: ["High", "Medium", "Low"][Math.floor(Math.random() * 3)],
+      controlDescription: `Sample control description ${i + 1}. This is a placeholder for a detailed description of the control.`,
+      cybersecurityDomain: [
+        "Access Control",
+        "Asset Management",
+        "Data Protection",
+        "Incident Response",
+        "Risk Management",
+      ][Math.floor(Math.random() * 5)],
+      meetsCriteria: Math.random() > 0.5 ? "Yes" : "No",
+      identifiedRisks:
+        Math.random() > 0.5 ? "No significant risks identified" : "Several risks identified that need attention",
+      riskDetails: Math.random() > 0.5 ? "" : "Details about the identified risks and their potential impact",
+      remediationStatus: ["Not Started", "In Progress", "Completed"][Math.floor(Math.random() * 3)],
+      lastUpdated: getRandomDate(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
 
-    // Filter subcategories by the selected category
-    const categorySubcategories = nistSubcategories.filter((subcat) => subcat.category === category.id)
-    const subcategory =
-        categorySubcategories.length > 0
-            ? categorySubcategories[Math.floor(Math.random() * categorySubcategories.length)]
-            : { id: `${category.id}.1`, description: `Sample subcategory for ${category.id}` }
-
-    const domain = domains[Math.floor(Math.random() * domains.length)]
-    const priority = priorities[Math.floor(Math.random() * priorities.length)]
-    const meetsCriteria = Math.random() > 0.5 ? "Yes" : "No"
-    const remediationStatus = remediationStatuses[Math.floor(Math.random() * remediationStatuses.length)]
-
-    // Create a control with a unique ID based on timestamp and random suffix
-    sampleControls.push({
-      id: i + 1 + randomSuffix * 1000, // Ensure unique IDs across sample data loads
-      nistFunction,
-      nistCategoryId: `${category.id} - ${category.name}`,
-      nistSubCategoryId: `${subcategory.id} - ${i}`, // Add index to ensure uniqueness
-      assessmentPriority: priority,
-      controlDescription: `${subcategory.description} - Batch ${randomSuffix}`, // Add batch number to description
-      cybersecurityDomain: domain,
-      meetsCriteria,
-      identifiedRisks: meetsCriteria === "No" ? `Sample risk for ${subcategory.id} - ${timestamp.toISOString()}` : "",
-      riskDetails:
-          meetsCriteria === "No" ? `Detailed risk information for ${subcategory.id} - ${timestamp.toISOString()}` : "",
-      remediationStatus,
-      lastUpdated: timestamp,
-      createdAt: timestamp,
-      updatedAt: timestamp,
-    })
+    sampleControls.push(control)
   }
 
-  console.log(`Generated ${sampleControls.length} sample controls with timestamp ${timestamp.toISOString()}`)
+  // Log the distribution of owners
+  const acmeCount = sampleControls.filter((c) => c.owner === "Acme Corporation").length
+  const contosoCount = sampleControls.filter((c) => c.owner === "Contoso Corporation").length
+  console.log(`Generated ${sampleControls.length} sample controls:`)
+  console.log(`- Acme Corporation: ${acmeCount} controls`)
+  console.log(`- Contoso Corporation: ${contosoCount} controls`)
+
   return sampleControls
 }
 
-// Function to parse the full dataset from a text format
-export function parseFullDataset(text: string): NistControl[] {
-  const lines = text.trim().split("\n")
-  // Skip header row
-  const dataLines = lines.slice(1)
-
-  return dataLines.map((line) => {
-    const columns = line.split("\t")
-
-    return {
-      nistFunction: columns[0] || "",
-      nistCategoryId: columns[1] || "",
-      nistSubCategoryId: columns[2] || "",
-      assessmentPriority: (columns[3] || "Medium") as "High" | "Medium" | "Low",
-      controlDescription: columns[4] || "",
-      cybersecurityDomain: columns[5] || "",
-      meetsCriteria: (columns[6] || "No") as "Yes" | "No",
-      identifiedRisks: columns[7] || "",
-      riskDetails: columns[8] || "",
-      remediationStatus: (columns[9] || "Not Started") as "Not Started" | "In Progress" | "Completed",
-      lastUpdated: new Date(),
-    }
-  })
-}
-
-// Function to generate sample NIST control data for testing
+// Function to generate more detailed sample data
 export function generateSampleData(): NistControl[] {
-  // Sample NIST Functions
-  const nistFunctions = ["ID", "PR", "DE", "RS", "RC", "GV"]
+  const nistFunctions = [
+    { id: "ID", name: "Identify" },
+    { id: "PR", name: "Protect" },
+    { id: "DE", name: "Detect" },
+    { id: "RS", name: "Respond" },
+    { id: "RC", name: "Recover" },
+  ]
 
-  // Sample Cybersecurity Domains
+  const nistCategories = [
+    { id: "ID.AM", name: "Asset Management" },
+    { id: "ID.BE", name: "Business Environment" },
+    { id: "ID.GV", name: "Governance" },
+    { id: "ID.RA", name: "Risk Assessment" },
+    { id: "ID.RM", name: "Risk Management Strategy" },
+    { id: "ID.SC", name: "Supply Chain Risk Management" },
+    { id: "PR.AC", name: "Identity Management and Access Control" },
+    { id: "PR.AT", name: "Awareness and Training" },
+    { id: "PR.DS", name: "Data Security" },
+    { id: "PR.IP", name: "Information Protection Processes and Procedures" },
+    { id: "PR.MA", name: "Maintenance" },
+    { id: "PR.PT", name: "Protective Technology" },
+    { id: "DE.AE", name: "Anomalies and Events" },
+    { id: "DE.CM", name: "Security Continuous Monitoring" },
+    { id: "DE.DP", name: "Detection Processes" },
+    { id: "RS.RP", name: "Response Planning" },
+    { id: "RS.CO", name: "Communications" },
+    { id: "RS.AN", name: "Analysis" },
+    { id: "RS.MI", name: "Mitigation" },
+    { id: "RS.IM", name: "Improvements" },
+    { id: "RC.RP", name: "Recovery Planning" },
+    { id: "RC.IM", name: "Improvements" },
+    { id: "RC.CO", name: "Communications" },
+  ]
+
+  const owners = ["Acme Corporation", "Contoso Corporation"]
   const domains = [
     "Access Control",
     "Asset Management",
-    "Audit and Accountability",
-    "Security Assessment",
-    "Configuration Management",
-    "Identification and Authentication",
+    "Data Protection",
     "Incident Response",
-    "Maintenance",
-    "Risk Assessment",
-    "System and Communications Protection",
+    "Risk Management",
+    "Vulnerability Management",
+    "Security Governance",
+    "Network Security",
+    "Application Security",
+    "Cloud Security",
   ]
 
-  // Sample data for NIST controls
-  const sampleData: NistControl[] = []
+  const controls: NistControl[] = []
+  let acmeCount = 0
+  let contosoCount = 0
 
-  // Generate sample data for each NIST function
+  // Generate controls for each function and category
   nistFunctions.forEach((func, funcIndex) => {
-    // Generate categories for each function
-    for (let catIndex = 1; catIndex <= 3; catIndex++) {
-      const categoryId = `${func}.${catIndex}`
+    // Get categories for this function
+    const funcCategories = nistCategories.filter((cat) => cat.id.startsWith(func.id))
 
-      // Generate subcategories for each category
-      for (let subIndex = 1; subIndex <= 5; subIndex++) {
-        const subCategoryId = `${categoryId}.${subIndex}`
+    funcCategories.forEach((cat, catIndex) => {
+      // Generate 1-3 subcategories for each category
+      const subCatCount = Math.floor(Math.random() * 3) + 1
 
-        // Determine compliance and remediation status with some variation
-        const meetsCriteria = Math.random() > 0.4 ? "Yes" : "No"
-        let remediationStatus: "Not Started" | "In Progress" | "Completed"
-
-        if (meetsCriteria === "Yes") {
-          remediationStatus = "Completed"
+      for (let subIndex = 1; subIndex <= subCatCount; subIndex++) {
+        // Determine the owner based on counts to ensure even distribution
+        let owner
+        if (acmeCount < 25 && (contosoCount >= 25 || Math.random() < 0.5)) {
+          owner = owners[0]
+          acmeCount++
+        } else if (contosoCount < 25) {
+          owner = owners[1]
+          contosoCount++
         } else {
-          remediationStatus = Math.random() > 0.5 ? "In Progress" : "Not Started"
+          // If we've already assigned 25 to each, skip this control
+          continue
         }
 
-        // Determine priority with some variation
-        let assessmentPriority: "High" | "Medium" | "Low"
-        const priorityRand = Math.random()
-        if (priorityRand < 0.3) {
-          assessmentPriority = "High"
-        } else if (priorityRand < 0.7) {
-          assessmentPriority = "Medium"
-        } else {
-          assessmentPriority = "Low"
-        }
-
-        // Select a random domain
+        const subCatId = `${cat.id}-${subIndex}`
         const domain = domains[Math.floor(Math.random() * domains.length)]
+        const priority = ["High", "Medium", "Low"][Math.floor(Math.random() * 3)]
+        const meetsCriteria = Math.random() > 0.4 ? "Yes" : "No"
+        const remediationStatus = ["Not Started", "In Progress", "Completed"][Math.floor(Math.random() * 3)]
 
-        // Create the control object
         const control: NistControl = {
-          nistFunction: func,
-          nistCategoryId: `${func}.${catIndex} - ${getFunctionName(func)} Category ${catIndex}`,
-          nistSubCategoryId: subCategoryId,
-          assessmentPriority,
-          controlDescription: `This is a sample control for ${subCategoryId} that demonstrates ${getFunctionName(func)} capabilities.`,
+          id: generateId(),
+          owner: owner,
+          nistFunction: func.name,
+          nistCategoryId: `${cat.id} - ${cat.name}`,
+          nistSubCategoryId: `${subCatId} - ${cat.name} Subcategory ${subIndex}`,
+          assessmentPriority: priority,
+          controlDescription: `This control is part of the ${func.name} function and ${cat.name} category. It focuses on ${domain} aspects of cybersecurity.`,
           cybersecurityDomain: domain,
-          meetsCriteria,
-          identifiedRisks: meetsCriteria === "No" ? `Sample risk for ${subCategoryId}` : "",
-          riskDetails: meetsCriteria === "No" ? `Detailed explanation of risk for ${subCategoryId}` : "",
-          remediationStatus,
-          lastUpdated: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000), // Random date within last 30 days
+          meetsCriteria: meetsCriteria,
+          identifiedRisks: meetsCriteria === "No" ? `Risks identified in ${domain} area` : "",
+          riskDetails:
+            meetsCriteria === "No"
+              ? `Detailed analysis of risks in the ${domain} domain related to ${cat.name} controls.`
+              : "",
+          remediationStatus: remediationStatus,
+          lastUpdated: getRandomDate(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }
 
-        sampleData.push(control)
+        controls.push(control)
       }
-    }
+    })
   })
 
-  return sampleData
-}
+  // Log the distribution of owners
+  console.log(`Generated ${controls.length} detailed sample controls:`)
+  console.log(`- Acme Corporation: ${acmeCount} controls`)
+  console.log(`- Contoso Corporation: ${contosoCount} controls`)
 
-// Helper function to get the full name of a NIST function
-function getFunctionName(functionCode: string): string {
-  const functionNames: Record<string, string> = {
-    ID: "Identify",
-    PR: "Protect",
-    DE: "Detect",
-    RS: "Respond",
-    RC: "Recover",
-    GV: "Govern",
-  }
-
-  return functionNames[functionCode] || functionCode
+  return controls
 }

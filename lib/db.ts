@@ -325,7 +325,7 @@ class DatabaseService {
     if (!this.db) {
       await this.init()
       if (!this.db) {
-        console.error("Failed to initialize database for clearAllData")
+        console.error("Failed toinitialize database for clearAllData")
         return false
       }
     }
