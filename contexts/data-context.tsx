@@ -1,189 +1,234 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { getControls, addControls, updateControl, clearAllData } from "@/lib/db"
-import { useToast } from "@/components/ui/use-toast"
-import type { NistControl } from "@/lib/types"
+import type React from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import type { Control } from "@/lib/types"
 
-interface DataContextType {
-  controls: NistControl[]
+// Define polling interval (120 seconds = 120000 ms)
+const POLLING_INTERVAL = 120000
+
+type DataContextType = {
+  controls: Control[]
   loading: boolean
   error: string | null
-  addControls: (controls: NistControl[]) => Promise<boolean>
-  updateControl: (control: NistControl) => Promise<boolean>
-  clearAllData: () => Promise<boolean>
   refreshData: () => Promise<void>
+  addControls: (controls: Control[]) => Promise<boolean>
+  updateControl: (control: Control) => Promise<boolean>
+  deleteControl: (id: number) => Promise<boolean>
+  clearAllData: () => Promise<boolean>
+  lastRefreshTime: Date | null
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined)
 
-export function DataProvider({ children }: { children: ReactNode }) {
-  const [controls, setControls] = useState<NistControl[]>([])
+export function DataProvider({ children }: { children: React.ReactNode }) {
+  const [controls, setControls] = useState<Control[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const { toast } = useToast()
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null)
 
-  const fetchData = async () => {
+  const refreshData = useCallback(async () => {
+    // Skip refresh if it's been less than 1 minute since the last refresh
+    if (lastRefreshTime && new Date().getTime() - lastRefreshTime.getTime() < 60000) {
+      console.log("Skipping refresh - too soon since last refresh")
+      return
+    }
+
     setLoading(true)
     setError(null)
+
     try {
       console.log("Fetching controls data...")
-      const data = await getControls()
-      console.log(`Fetched ${data.length} controls`)
-      setControls(data)
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to fetch controls"
-      console.error("Error fetching controls:", errorMessage)
-      setError(errorMessage)
+      const startTime = performance.now()
 
-      toast({
-        title: "Data Loading Error",
-        description: errorMessage,
-        variant: "destructive",
-      })
+      const response = await fetch("/api/controls")
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Error fetching controls:", errorData)
+        throw new Error(errorData.error || "Failed to fetch controls")
+      }
+
+      const data = await response.json()
+      const endTime = performance.now()
+
+      console.log(`Fetched ${data.length} controls in ${(endTime - startTime).toFixed(2)}ms`)
+      setControls(data)
+      setLastRefreshTime(new Date())
+    } catch (err) {
+      console.error("Error in refreshData:", err)
+      setError(err instanceof Error ? err.message : "An unknown error occurred")
     } finally {
       setLoading(false)
     }
-  }
+  }, [lastRefreshTime])
+
+  const addControls = useCallback(
+      async (newControls: Control[]): Promise<boolean> => {
+        try {
+          console.log(`Adding ${newControls.length} controls...`)
+          const startTime = performance.now()
+
+          const response = await fetch("/api/controls", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(newControls),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error("Error adding controls:", errorData)
+            throw new Error(errorData.error || "Failed to add controls")
+          }
+
+          const endTime = performance.now()
+          console.log(`Added controls in ${(endTime - startTime).toFixed(2)}ms`)
+
+          await refreshData()
+          return true
+        } catch (err) {
+          console.error("Error in addControls:", err)
+          setError(err instanceof Error ? err.message : "An unknown error occurred")
+          return false
+        }
+      },
+      [refreshData],
+  )
+
+  const updateControl = useCallback(
+      async (control: Control): Promise<boolean> => {
+        try {
+          console.log(`Updating control ${control.id}...`)
+          const startTime = performance.now()
+
+          const response = await fetch(`/api/controls/${control.id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(control),
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error("Error updating control:", errorData)
+            throw new Error(errorData.error || "Failed to update control")
+          }
+
+          const endTime = performance.now()
+          console.log(`Updated control in ${(endTime - startTime).toFixed(2)}ms`)
+
+          await refreshData()
+          return true
+        } catch (err) {
+          console.error("Error in updateControl:", err)
+          setError(err instanceof Error ? err.message : "An unknown error occurred")
+          return false
+        }
+      },
+      [refreshData],
+  )
+
+  const deleteControl = useCallback(
+      async (id: number): Promise<boolean> => {
+        try {
+          console.log(`Deleting control ${id}...`)
+          const startTime = performance.now()
+
+          const response = await fetch(`/api/controls/${id}`, {
+            method: "DELETE",
+          })
+
+          if (!response.ok) {
+            const errorData = await response.json()
+            console.error("Error deleting control:", errorData)
+            throw new Error(errorData.error || "Failed to delete control")
+          }
+
+          const endTime = performance.now()
+          console.log(`Deleted control in ${(endTime - startTime).toFixed(2)}ms`)
+
+          await refreshData()
+          return true
+        } catch (err) {
+          console.error("Error in deleteControl:", err)
+          setError(err instanceof Error ? err.message : "An unknown error occurred")
+          return false
+        }
+      },
+      [refreshData],
+  )
+
+  const clearAllData = useCallback(async (): Promise<boolean> => {
+    try {
+      console.log("Clearing all controls data...")
+      const startTime = performance.now()
+
+      // Get current count before deletion
+      const currentCount = controls.length
+      console.log(`Current control count before deletion: ${currentCount}`)
+
+      const response = await fetch("/api/controls", {
+        method: "DELETE",
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        console.error("Error clearing data:", errorData)
+        throw new Error(errorData.error || "Failed to clear data")
+      }
+
+      const result = await response.json()
+      const endTime = performance.now()
+
+      console.log(`Cleared ${result.deletedCount} controls in ${(endTime - startTime).toFixed(2)}ms`)
+
+      // Force a refresh to update the UI
+      await refreshData()
+      return true
+    } catch (err) {
+      console.error("Error in clearAllData:", err)
+      setError(err instanceof Error ? err.message : "An unknown error occurred")
+      return false
+    }
+  }, [controls.length, refreshData])
 
   useEffect(() => {
-    // Delay the initial data fetch to ensure database is initialized
-    const timer = setTimeout(() => {
-      fetchData()
-    }, 1000)
+    refreshData()
 
-    return () => clearTimeout(timer)
-  }, [])
+    // Set up polling for real-time updates (every 120 seconds)
+    const intervalId = setInterval(() => {
+      console.log("Polling for data updates...")
+      refreshData()
+    }, POLLING_INTERVAL)
 
-  const addControlsToDb = async (newControls: NistControl[]): Promise<boolean> => {
-    try {
-      console.log(`Adding ${newControls.length} controls...`)
-      const result = await addControls(newControls)
+    return () => clearInterval(intervalId)
+  }, [refreshData])
 
-      if (result) {
-        toast({
-          title: "Controls Added",
-          description: `Successfully added ${newControls.length} controls`,
-        })
-
-        await refreshData() // Refresh data after adding
-      } else {
-        toast({
-          title: "Failed to Add Controls",
-          description: "An error occurred while adding controls",
-          variant: "destructive",
-        })
-      }
-
-      return result
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to add controls"
-      console.error("Error adding controls:", errorMessage)
-      setError(errorMessage)
-
-      toast({
-        title: "Error Adding Controls",
-        description: errorMessage,
-        variant: "destructive",
-      })
-
-      return false
-    }
-  }
-
-  const updateControlInDb = async (control: NistControl): Promise<boolean> => {
-    try {
-      console.log(`Updating control ${control.id}...`)
-      const result = await updateControl(control)
-
-      if (result) {
-        toast({
-          title: "Control Updated",
-          description: `Successfully updated control ${control.control_id || control.id}`,
-        })
-
-        await refreshData() // Refresh data after updating
-      } else {
-        toast({
-          title: "Failed to Update Control",
-          description: "An error occurred while updating the control",
-          variant: "destructive",
-        })
-      }
-
-      return result
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to update control"
-      console.error("Error updating control:", errorMessage)
-      setError(errorMessage)
-
-      toast({
-        title: "Error Updating Control",
-        description: errorMessage,
-        variant: "destructive",
-      })
-
-      return false
-    }
-  }
-
-  const clearAllDataFromDb = async (): Promise<boolean> => {
-    try {
-      console.log("Clearing all data...")
-      const result = await clearAllData()
-
-      if (result) {
-        setControls([]) // Clear local state immediately for better UX
-
-        toast({
-          title: "Data Cleared",
-          description: "All controls data has been cleared",
-        })
-      } else {
-        toast({
-          title: "Failed to Clear Data",
-          description: "An error occurred while clearing data",
-          variant: "destructive",
-        })
-      }
-
-      return result
-    } catch (e: any) {
-      const errorMessage = e.message || "Failed to clear data"
-      console.error("Error clearing data:", errorMessage)
-      setError(errorMessage)
-
-      toast({
-        title: "Error Clearing Data",
-        description: errorMessage,
-        variant: "destructive",
-      })
-
-      return false
-    }
-  }
-
-  const refreshData = async () => {
-    console.log("Refreshing controls data...")
-    await fetchData()
-  }
-
-  const value: DataContextType = {
-    controls,
-    loading,
-    error,
-    addControls: addControlsToDb,
-    updateControl: updateControlInDb,
-    clearAllData: clearAllDataFromDb,
-    refreshData,
-  }
-
-  return <DataContext.Provider value={value}>{children}</DataContext.Provider>
+  return (
+      <DataContext.Provider
+          value={{
+            controls,
+            loading,
+            error,
+            refreshData,
+            addControls,
+            updateControl,
+            deleteControl,
+            clearAllData,
+            lastRefreshTime,
+          }}
+      >
+        {children}
+      </DataContext.Provider>
+  )
 }
 
-export function useData(): DataContextType {
+export function useData() {
   const context = useContext(DataContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useData must be used within a DataProvider")
   }
   return context

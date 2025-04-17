@@ -15,22 +15,11 @@ export interface NistControl {
   updatedAt?: Date
 }
 
-export interface ControlStats {
-  totalControls: number
-  compliantControls: number
-  nonCompliantControls: number
-  complianceRate: number
-  highPriorityControls: number
-  mediumPriorityControls: number
-  lowPriorityControls: number
-  notStartedControls: number
-  inProgressControls: number
-  completedControls: number
-  functionDistribution: Record<string, number>
-}
-
-export interface DbInfo {
-  isInitialized: boolean
-  controlsCount: number
-  lastUpdated: string | null
+export interface ExcelFile {
+  id?: number
+  filename: string
+  description?: string
+  fileSize: number
+  uploadedAt: Date
+  uploadedBy?: string
 }

@@ -1,21 +1,11 @@
-import { executeQuery, initializeDatabase as initDb } from "./db-connection"
+import { initializeDatabase } from "./db-connection"
 
-export async function initializeDatabase(): Promise<boolean> {
+// Initialize the database when the server starts
+export async function initDb() {
   try {
-    return await initDb()
+    await initializeDatabase()
+    console.log("Database initialized successfully")
   } catch (error) {
-    console.error("Error initializing database:", error)
-    return false
-  }
-}
-
-// Function to test the database connection
-export async function testDatabaseConnection(): Promise<boolean> {
-  try {
-    const result = await executeQuery("SELECT 1 as test")
-    return result.rows.length > 0 && result.rows[0].test === 1
-  } catch (error) {
-    console.error("Database connection test failed:", error)
-    return false
+    console.error("Failed to initialize database:", error)
   }
 }

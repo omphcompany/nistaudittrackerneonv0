@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { initDb, checkDbExists } from "@/lib/db"
 import { useToast } from "@/components/ui/use-toast"
 
 export function DbInitializer() {
@@ -10,48 +9,40 @@ export function DbInitializer() {
   const { toast } = useToast()
 
   useEffect(() => {
-    const initialize = async () => {
+    const initDb = async () => {
       try {
-        console.log("Checking if database exists...")
-        const exists = await checkDbExists()
+        console.log("Initializing database...")
+        const response = await fetch("/api/init-db")
+        const data = await response.json()
 
-        if (!exists) {
-          console.log("Database doesn't exist, initializing...")
-          const result = await initDb()
-          console.log("Database initialization result:", result)
+        if (!response.ok) {
+          throw new Error(`Failed to initialize database: ${data.error || response.statusText}`)
+        }
 
-          if (result) {
-            setInitialized(true)
-            toast({
-              title: "Database Initialized",
-              description: "Local database has been successfully initialized",
-            })
-          } else {
-            setError("Failed to initialize database")
-            toast({
-              title: "Database Error",
-              description: "Failed to initialize local database",
-              variant: "destructive",
-            })
-          }
-        } else {
-          console.log("Database already exists")
-          setInitialized(true)
+        console.log("Database initialization result:", data)
+        setInitialized(true)
+
+        // Only show toast on success in development
+        if (process.env.NODE_ENV === "development") {
+          toast({
+            title: "Database Connected",
+            description: "Successfully connected to the database",
+          })
         }
       } catch (err) {
         console.error("Error initializing database:", err)
-        const errorMessage = err instanceof Error ? err.message : "Unknown error initializing database"
+        const errorMessage = err instanceof Error ? err.message : "Unknown error"
         setError(errorMessage)
 
         toast({
-          title: "Database Error",
+          title: "Database Connection Error",
           description: errorMessage,
           variant: "destructive",
         })
       }
     }
 
-    initialize()
+    initDb()
   }, [toast])
 
   // This component doesn't render anything visible

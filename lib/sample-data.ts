@@ -91,9 +91,9 @@ export function loadSampleData(): NistControl[] {
     // Filter subcategories by the selected category
     const categorySubcategories = nistSubcategories.filter((subcat) => subcat.category === category.id)
     const subcategory =
-      categorySubcategories.length > 0
-        ? categorySubcategories[Math.floor(Math.random() * categorySubcategories.length)]
-        : { id: `${category.id}.1`, description: `Sample subcategory for ${category.id}` }
+        categorySubcategories.length > 0
+            ? categorySubcategories[Math.floor(Math.random() * categorySubcategories.length)]
+            : { id: `${category.id}.1`, description: `Sample subcategory for ${category.id}` }
 
     const domain = domains[Math.floor(Math.random() * domains.length)]
     const priority = priorities[Math.floor(Math.random() * priorities.length)]
@@ -112,7 +112,7 @@ export function loadSampleData(): NistControl[] {
       meetsCriteria,
       identifiedRisks: meetsCriteria === "No" ? `Sample risk for ${subcategory.id} - ${timestamp.toISOString()}` : "",
       riskDetails:
-        meetsCriteria === "No" ? `Detailed risk information for ${subcategory.id} - ${timestamp.toISOString()}` : "",
+          meetsCriteria === "No" ? `Detailed risk information for ${subcategory.id} - ${timestamp.toISOString()}` : "",
       remediationStatus,
       lastUpdated: timestamp,
       createdAt: timestamp,

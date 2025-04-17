@@ -10,7 +10,7 @@ export function AppNavigation() {
   const pathname = usePathname()
   const { logout } = useAuth()
 
-  const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`)
+  const isActive = (path: string) => pathname === path
 
   const mainNavItems = [
     { name: "Introduction", href: "/introduction", icon: Home },
@@ -21,60 +21,60 @@ export function AppNavigation() {
   ]
 
   return (
-    <nav className="w-72 bg-black text-white overflow-y-auto border-r border-gray-800 flex flex-col h-full">
-      {/* Main navigation items */}
-      <div className="p-4 flex-grow">
-        <ul className="space-y-3">
-          {mainNavItems.map((item) => {
-            const Icon = item.icon
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-4 rounded-md px-4 py-3 text-base font-medium transition-colors",
-                    isActive(item.href)
-                      ? "bg-primary text-primary-foreground"
-                      : "text-gray-300 hover:bg-gray-900 hover:text-white",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{item.name}</span>
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
+      <nav className="w-72 bg-black text-white overflow-y-auto border-r border-gray-800 flex flex-col h-full">
+        {/* Main navigation items */}
+        <div className="p-4 flex-grow">
+          <ul className="space-y-3">
+            {mainNavItems.map((item) => {
+              const Icon = item.icon
+              return (
+                  <li key={item.href}>
+                    <Link
+                        href={item.href}
+                        className={cn(
+                            "flex items-center gap-4 rounded-md px-4 py-3 text-base font-medium transition-colors",
+                            isActive(item.href)
+                                ? "bg-primary text-primary-foreground"
+                                : "text-gray-300 hover:bg-gray-900 hover:text-white",
+                        )}
+                    >
+                      <Icon className="h-5 w-5" />
+                      <span>{item.name}</span>
+                    </Link>
+                  </li>
+              )
+            })}
+          </ul>
+        </div>
 
-      {/* Settings and Logout at the bottom */}
-      <div className="p-4 border-t border-gray-800">
-        <ul className="space-y-3">
-          <li>
-            <Link
-              href="/settings"
-              className={cn(
-                "flex items-center gap-4 rounded-md px-4 py-3 text-base font-medium transition-colors",
-                isActive("/settings")
-                  ? "bg-primary text-primary-foreground"
-                  : "text-gray-300 hover:bg-gray-900 hover:text-white",
-              )}
-            >
-              <Settings className="h-5 w-5" />
-              <span>Settings</span>
-            </Link>
-          </li>
-          <li>
-            <button
-              onClick={logout}
-              className="w-full flex items-center gap-4 rounded-md px-4 py-3 text-base font-medium transition-colors text-gray-300 hover:bg-gray-900 hover:text-white"
-            >
-              <LogOut className="h-5 w-5" />
-              <span>Logout</span>
-            </button>
-          </li>
-        </ul>
-      </div>
-    </nav>
+        {/* Settings and Logout at the bottom */}
+        <div className="p-4 border-t border-gray-800">
+          <ul className="space-y-3">
+            <li>
+              <Link
+                  href="/settings"
+                  className={cn(
+                      "flex items-center gap-4 rounded-md px-4 py-3 text-base font-medium transition-colors",
+                      isActive("/settings")
+                          ? "bg-primary text-primary-foreground"
+                          : "text-gray-300 hover:bg-gray-900 hover:text-white",
+                  )}
+              >
+                <Settings className="h-5 w-5" />
+                <span>Settings</span>
+              </Link>
+            </li>
+            <li>
+              <button
+                  onClick={logout}
+                  className="w-full flex items-center gap-4 rounded-md px-4 py-3 text-base font-medium transition-colors text-gray-300 hover:bg-gray-900 hover:text-white"
+              >
+                <LogOut className="h-5 w-5" />
+                <span>Logout</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </nav>
   )
 }

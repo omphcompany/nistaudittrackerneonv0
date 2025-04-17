@@ -1,243 +1,466 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/components/ui/use-toast"
+import type React from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useData } from "@/contexts/data-context"
-import { loadSampleDataAction } from "./actions"
-import { AlertCircle, FileSpreadsheet, Database, RefreshCw, Trash2 } from "lucide-react"
+import { parseExcelFile, exportToExcel } from "@/lib/excel-parser"
+import { loadSampleData } from "@/lib/sample-data"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { AlertCircle, FileSpreadsheet, Upload, Download, Trash2, Database, RefreshCw } from "lucide-react"
+import { useToast } from "@/components/ui/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useTheme } from "next-themes"
+import { Separator } from "@/components/ui/separator"
 
-export default function DataManagementPage() {
-  const { toast } = useToast()
+export default function DataManagement() {
   const { controls, loading, error, addControls, clearAllData, refreshData } = useData()
-  const [activeTab, setActiveTab] = useState("import")
+  const { toast } = useToast()
+  const { theme } = useTheme()
+  const [isUploading, setIsUploading] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false)
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null)
+  const [controlCount, setControlCount] = useState<number>(0)
 
-  const handleLoadSampleData = async () => {
+  const isDarkTheme = theme === "dark"
+
+  // Update control count when controls change
+  useEffect(() => {
+    setControlCount(controls.length)
+  }, [controls])
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true)
     try {
-      setIsLoading(true)
-      console.log("Loading sample data...")
-
-      // Call the server action to generate sample data
-      const result = await loadSampleDataAction()
-
-      if (result.success && result.data) {
-        console.log(`Received ${result.data.length} sample controls from server action`)
-
-        // Add the sample data to the database
-        const addResult = await addControls(result.data)
-
-        if (addResult) {
-          toast({
-            title: "Sample Data Loaded",
-            description: `Successfully loaded ${result.data.length} sample controls`,
-          })
-        } else {
-          toast({
-            title: "Failed to Load Sample Data",
-            description: "The sample data was generated but could not be added to the database",
-            variant: "destructive",
-          })
-        }
-      } else {
-        console.error("Error loading sample data:", result.error)
-        toast({
-          title: "Error Loading Sample Data",
-          description: result.error || "An unknown error occurred",
-          variant: "destructive",
-        })
-      }
-    } catch (error) {
-      console.error("Error in handleLoadSampleData:", error)
+      await refreshData()
       toast({
-        title: "Error Loading Sample Data",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: "Data Refreshed",
+        description: `Current control count: ${controls.length}`,
+      })
+    } catch (error) {
+      console.error("Error refreshing data:", error)
+      toast({
+        title: "Refresh Failed",
+        description: "Failed to refresh data",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setIsRefreshing(false)
     }
   }
 
-  const handleClearData = async () => {
+  const handleFileUpload = useCallback(
+      async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0]
+        if (!file) {
+          console.log("No file selected")
+          return
+        }
+
+        console.log("File selected:", file.name, file.type, file.size)
+
+        // Validate file type
+        if (!file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+          setUploadError("Please select a valid Excel file (.xlsx or .xls)")
+          return
+        }
+
+        setIsUploading(true)
+        setUploadError(null)
+        setUploadSuccess(null)
+
+        try {
+          console.log("Starting to parse Excel file...")
+          const parsedData = await parseExcelFile(file)
+          console.log("Excel file parsed successfully, found", parsedData.length, "records")
+
+          if (parsedData.length === 0) {
+            setUploadError("No valid data found in the Excel file.")
+            return
+          }
+
+          // Add a timestamp to make each upload unique
+          const timestamp = new Date()
+          const enhancedData = parsedData.map((item, index) => ({
+            ...item,
+            controlDescription: `${item.controlDescription} - Uploaded at ${timestamp.toISOString()}`,
+            lastUpdated: timestamp,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          }))
+
+          console.log("Adding controls to database...")
+          const result = await addControls(enhancedData)
+          console.log("Database operation result:", result)
+
+          if (result) {
+            setUploadSuccess(
+                `${parsedData.length} controls were imported successfully. You can now view the data in the Dashboard, Controls Explorer, and Reports sections.`,
+            )
+            toast({
+              title: "Upload Successful",
+              description: `${parsedData.length} controls were imported successfully.`,
+            })
+
+            // Force a refresh of the data
+            await refreshData()
+            setControlCount(controls.length + parsedData.length)
+          } else {
+            setUploadError("Failed to add controls to the database.")
+          }
+        } catch (err) {
+          console.error("Error uploading file:", err)
+          setUploadError(
+              `Error parsing Excel file: ${err instanceof Error ? err.message : "Unknown error"}. Please check the file format.`,
+          )
+        } finally {
+          setIsUploading(false)
+          // Reset the file input
+          if (event.target) {
+            event.target.value = ""
+          }
+        }
+      },
+      [addControls, toast, refreshData, controls.length],
+  )
+
+  const handleLoadSampleData = useCallback(async () => {
+    setIsLoading(true)
+    setUploadError(null)
+    setUploadSuccess(null)
+
     try {
-      setIsLoading(true)
+      // Load the sample data
+      const sampleData = loadSampleData()
+      console.log("Loaded sample data:", sampleData.length, "controls")
+
+      // Add to database
+      const result = await addControls(sampleData)
+
+      if (result) {
+        setUploadSuccess(
+            `${sampleData.length} sample controls were loaded successfully. You can now view the data in the Dashboard, Controls Explorer, and Reports sections.`,
+        )
+        toast({
+          title: "Sample Data Loaded",
+          description: `${sampleData.length} sample controls were loaded successfully.`,
+        })
+
+        // Force a refresh of the data
+        await refreshData()
+        setControlCount((prevCount) => prevCount + sampleData.length)
+      } else {
+        setUploadError("Failed to add sample controls to the database.")
+      }
+    } catch (err) {
+      console.error("Error loading sample data:", err)
+      setUploadError("Error loading sample data.")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [addControls, toast, refreshData])
+
+  const handleExport = useCallback(() => {
+    if (controls.length === 0) {
+      toast({
+        title: "Export Failed",
+        description: "No data to export.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      exportToExcel(controls)
+      toast({
+        title: "Export Successful",
+        description: "Data exported to Excel file.",
+      })
+    } catch (err) {
+      console.error("Error exporting data:", err)
+      toast({
+        title: "Export Failed",
+        description: "Failed to export data to Excel file.",
+        variant: "destructive",
+      })
+    }
+  }, [controls, toast])
+
+  const handleClearData = useCallback(async () => {
+    setIsLoading(true)
+    try {
       const result = await clearAllData()
 
       if (result) {
         toast({
           title: "Data Cleared",
-          description: "All controls data has been cleared",
+          description: "All controls data has been removed.",
         })
+        setUploadSuccess(null)
+        setControlCount(0)
+        // Add a console log to verify the operation completed
+        console.log("Data cleared successfully")
       } else {
         toast({
-          title: "Failed to Clear Data",
-          description: "An error occurred while clearing data",
+          title: "Operation Failed",
+          description: "Failed to clear data.",
           variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Error clearing data:", error)
       toast({
-        title: "Error Clearing Data",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        title: "Operation Failed",
+        description: "An error occurred while clearing data.",
         variant: "destructive",
       })
     } finally {
       setIsLoading(false)
+      setIsConfirmDialogOpen(false)
     }
-  }
-
-  const handleRefreshData = async () => {
-    try {
-      setIsLoading(true)
-      await refreshData()
-
-      toast({
-        title: "Data Refreshed",
-        description: "Controls data has been refreshed",
-      })
-    } catch (error) {
-      console.error("Error refreshing data:", error)
-      toast({
-        title: "Error Refreshing Data",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  }, [clearAllData, toast])
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Data Management</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleRefreshData} disabled={isLoading}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-          <Button variant="destructive" onClick={handleClearData} disabled={isLoading}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Clear All Data
-          </Button>
+      <div className="container mx-auto p-6">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Data Management</h1>
+            <p className="text-muted-foreground">Import, export, and manage your NIST controls data</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm text-muted-foreground">
+              Current controls: <span className="font-bold">{controlCount}</span>
+            </div>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshData}
+                disabled={isRefreshing}
+                className="flex items-center gap-1"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+              {isRefreshing ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+        <Tabs defaultValue="import" className="w-full">
+          <TabsList className={`grid w-full grid-cols-3 ${isDarkTheme ? "" : "bg-black"}`}>
+            <TabsTrigger
+                value="import"
+                className={`
+              data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+              ${isDarkTheme ? "text-white hover:bg-gray-700" : "text-white hover:bg-[#07315A]"}
+            `}
+            >
+              Import Data
+            </TabsTrigger>
+            <TabsTrigger
+                value="export"
+                className={`
+              data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+              ${isDarkTheme ? "text-white hover:bg-gray-700" : "text-white hover:bg-[#07315A]"}
+            `}
+            >
+              Export Data
+            </TabsTrigger>
+            <TabsTrigger
+                value="clear"
+                className={`
+              data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+              ${isDarkTheme ? "text-white hover:bg-gray-700" : "text-white hover:bg-[#07315A]"}
+            `}
+            >
+              Clear Data
+            </TabsTrigger>
+          </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Controls</CardTitle>
-          <CardDescription>Import, export, and manage your NIST CSF 2.0 controls data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="import" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="import">Import Data</TabsTrigger>
-              <TabsTrigger value="export">Export Data</TabsTrigger>
-            </TabsList>
-            <TabsContent value="import" className="space-y-4 pt-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Sample Data</CardTitle>
-                    <CardDescription>Load sample NIST CSF 2.0 controls for testing</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      This will generate 50 sample NIST controls with random values for testing purposes.
-                    </p>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
+          <TabsContent value="import" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Import Controls from Excel</CardTitle>
+                <CardDescription>Upload an Excel file containing NIST CSF 2.0 controls data.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {/* Sample Data Loading */}
+                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-blue-50 dark:bg-blue-900/10 mb-6">
+                  <Database className="h-10 w-10 text-blue-600 dark:text-blue-400 mb-4" />
+                  <p className="text-sm text-blue-800 dark:text-blue-300 mb-4 text-center">
+                    Load sample NIST control data for testing and demonstration
+                  </p>
+                  <Button
                       onClick={handleLoadSampleData}
                       disabled={isLoading}
-                      className="w-full bg-blue-600 hover:bg-blue-700"
-                    >
-                      {isLoading ? "Loading..." : "Load Sample Data"}
-                    </Button>
-                  </CardFooter>
-                </Card>
+                      variant="outline"
+                      className="bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                  >
+                    <Database className="mr-2 h-4 w-4" />
+                    {isLoading ? "Loading..." : "Load Sample Data"}
+                  </Button>
+                </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Excel Import</CardTitle>
-                    <CardDescription>Import NIST controls from Excel spreadsheet</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Upload an Excel file containing your NIST controls data.
-                    </p>
-                    <div className="flex items-center justify-center w-full">
-                      <label
-                        htmlFor="excel-upload"
-                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:hover:border-gray-500"
-                      >
-                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <FileSpreadsheet className="w-8 h-8 mb-2 text-gray-500 dark:text-gray-400" />
-                          <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="font-semibold">Click to upload</span> or drag and drop
-                          </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Excel files only (XLSX)</p>
-                        </div>
-                        <input id="excel-upload" type="file" className="hidden" accept=".xlsx" />
-                      </label>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button disabled className="w-full">
-                      Upload Excel File
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </div>
-            </TabsContent>
-            <TabsContent value="export" className="space-y-4 pt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Export Controls</CardTitle>
-                  <CardDescription>Export your NIST controls data to various formats</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Export your current NIST controls data to Excel, CSV, or JSON format.
+                <Separator className="my-6" />
+
+                {/* Regular File Upload */}
+                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <FileSpreadsheet className="h-12 w-12 text-primary mb-4" />
+                  <p className="text-sm text-muted-foreground mb-4 text-center">
+                    Click the button below to select an Excel file
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Button variant="outline" disabled={loading || controls.length === 0}>
-                      <FileSpreadsheet className="mr-2 h-4 w-4" />
-                      Export to Excel
-                    </Button>
-                    <Button variant="outline" disabled={loading || controls.length === 0}>
-                      <Database className="mr-2 h-4 w-4" />
-                      Export to CSV
-                    </Button>
-                    <Button variant="outline" disabled={loading || controls.length === 0}>
-                      <Database className="mr-2 h-4 w-4" />
-                      Export to JSON
+                  <div className="relative">
+                    <Input
+                        id="file-upload"
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        onChange={handleFileUpload}
+                        disabled={isUploading}
+                        onClick={(e) => {
+                          // Reset the value when clicked to ensure onChange fires even if the same file is selected
+                          ;(e.target as HTMLInputElement).value = ""
+                        }}
+                    />
+                    <Button disabled={isUploading} size="lg" className="gap-2 pointer-events-none">
+                      <Upload className="h-4 w-4" />
+                      {isUploading ? "Uploading..." : "Upload Excel File"}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <div className="text-sm text-muted-foreground">
-            {loading ? "Loading controls..." : `${controls.length} controls loaded`}
-          </div>
-        </CardFooter>
-      </Card>
-    </div>
+                </div>
+
+                {uploadError && (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Error</AlertTitle>
+                      <AlertDescription>{uploadError}</AlertDescription>
+                    </Alert>
+                )}
+
+                {uploadSuccess && (
+                    <Alert
+                        variant="default"
+                        className="mt-4 bg-green-50 text-green-800 dark:bg-green-900/20 dark:text-green-300"
+                    >
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Success</AlertTitle>
+                      <AlertDescription>{uploadSuccess}</AlertDescription>
+                    </Alert>
+                )}
+
+                <div className="mt-6">
+                  <h3 className="text-lg font-medium mb-2">Expected Format</h3>
+                  <p className="text-sm text-muted-foreground mb-2">Your Excel file should have the following columns:</p>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
+                    <li>NIST Function</li>
+                    <li>NIST Category & ID</li>
+                    <li>NIST Sub-Category & ID</li>
+                    <li>Assessment Priority</li>
+                    <li>Control Description</li>
+                    <li>Cybersecurity Domain</li>
+                    <li>Meets Criteria (Yes/No)</li>
+                    <li>Identified Risks</li>
+                    <li>Risk Details</li>
+                    <li>Remediation Status</li>
+                  </ul>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {controlCount > 0 ? `${controlCount} controls in database` : "No controls in database"}
+                </p>
+              </CardFooter>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="export" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Export Controls to Excel</CardTitle>
+                <CardDescription>Export all controls data to an Excel file.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg">
+                  <FileSpreadsheet className="h-10 w-10 text-muted-foreground mb-4" />
+                  <p className="text-sm text-muted-foreground mb-4">Click the button below to export all controls data</p>
+                  <Button onClick={handleExport} disabled={controls.length === 0 || loading}>
+                    <Download className="mr-2 h-4 w-4" />
+                    Export to Excel
+                  </Button>
+                </div>
+
+                {controls.length === 0 && (
+                    <Alert className="mt-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>No Data</AlertTitle>
+                      <AlertDescription>There are no controls to export. Please import data first.</AlertDescription>
+                    </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="clear" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Clear All Data</CardTitle>
+                <CardDescription>Remove all controls data from the database.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg">
+                  <Trash2 className="h-10 w-10 text-destructive mb-4" />
+                  <p className="text-sm text-muted-foreground mb-4">
+                    This action will permanently delete all controls data
+                  </p>
+                  <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="destructive" disabled={controls.length === 0 || loading}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Clear All Data
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Are you sure?</DialogTitle>
+                        <DialogDescription>
+                          This action cannot be undone. This will permanently delete all controls data from the database.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsConfirmDialogOpen(false)}>
+                          Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleClearData}>
+                          Delete All Data
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {controls.length === 0 && (
+                    <Alert className="mt-4">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>No Data</AlertTitle>
+                      <AlertDescription>There are no controls to clear.</AlertDescription>
+                    </Alert>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
   )
 }
