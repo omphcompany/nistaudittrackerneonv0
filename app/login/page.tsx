@@ -11,33 +11,45 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Shield, AlertCircle } from "lucide-react"
-import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
   const router = useRouter()
-  const { login } = useAuth()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
 
+  // Create a local login function that doesn't rely on useAuth initially
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
     setIsLoading(true)
 
-    // Simulate a network request
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Hardcoded credentials
+      const validUsername = "nistauditor"
+      const validPassword = "NISTAuditor$"
 
-    const success = await login(username, password)
+      // Simulate a network request
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    if (success) {
-      router.push("/introduction")
-    } else {
-      setError("Invalid username or password")
+      if (username === validUsername && password === validPassword) {
+        // Set authentication in session storage
+        sessionStorage.setItem("isAuthenticated", "true")
+
+        // Set a cookie for server-side auth checks
+        document.cookie = "auth=true; path=/; max-age=86400" // 24 hours
+
+        router.push("/introduction")
+      } else {
+        setError("Invalid username or password")
+      }
+    } catch (err) {
+      setError("An error occurred during login")
+      console.error(err)
+    } finally {
+      setIsLoading(false)
     }
-
-    setIsLoading(false)
   }
 
   return (

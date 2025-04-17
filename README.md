@@ -2,19 +2,20 @@
 
 <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/NIST_Audit_Tracker_Icon-f7X3HK6U6FvhQ9XseN0uJN5yV1wE9h.png" alt="NIST Audit Tracker" width="200" />
 
-A powerful browser-based utility for tracking, visualizing, and managing your NIST CSF 2.0 controls compliance.
+A powerful cloud-based utility for tracking, visualizing, and managing your NIST CSF 2.0 controls compliance.
 
 ## Overview
 
-NIST Audit Tracker is a comprehensive tool designed to help organizations track, visualize, and manage their compliance with the NIST Cybersecurity Framework 2.0. Built as a browser-based application, it eliminates the need for complex server setups or external database configurations.
+NIST Audit Tracker is a comprehensive tool designed to help organizations track, visualize, and manage their compliance with the NIST Cybersecurity Framework 2.0. Built as a cloud-based application with Neon Serverless PostgreSQL, it provides real-time synchronization, multi-device access, and enterprise-grade data security.
 
 ## Key Features
 
-### Browser-Based Storage
-- **No external database required**
-- All data is stored securely in your browser using IndexedDB
-- Works completely offline with no internet connection required
-- Export and import functionality for sharing data between devices
+### Cloud-Based Storage
+- **Powered by Neon Serverless PostgreSQL**
+- All data is stored securely in the cloud with automatic backups
+- Real-time synchronization across all devices and users
+- Enterprise-grade security with encrypted connections
+- Automatic scaling to handle growing data needs
 
 ### NIST CSF 2.0 Compliant
 - Built specifically for the latest NIST Cybersecurity Framework 2.0
@@ -22,8 +23,8 @@ NIST Audit Tracker is a comprehensive tool designed to help organizations track,
 - Comprehensive tracking of control implementation status
 
 ### Instant Analysis
-- Real-time data processing happens directly in your browser
-- Immediate insights and visualizations without server-side processing
+- Real-time data processing with server-side optimization
+- Immediate insights and visualizations with efficient data queries
 - Any changes to control data are instantly reflected in all visualizations
 
 ### Data Management
@@ -43,15 +44,19 @@ The dashboard provides multiple views for different analysis perspectives:
 
 ## Technical Details
 
-### Technical Details
-
 - Built with Next.js and React
+- Neon Serverless PostgreSQL for cloud database storage
 - Uses Recharts for data visualization
-- IndexedDB for offline capability
 - Tailwind CSS for styling
 
+### Database Architecture
+- Serverless PostgreSQL database hosted on Neon
+- Automatic scaling based on workload
+- Connection pooling for optimal performance
+- Branching capability for development and testing
+
 ### Browser Compatibility
-Works with all modern browsers that support IndexedDB:
+Works with all modern browsers:
 - Chrome
 - Firefox
 - Safari
@@ -61,8 +66,9 @@ Works with all modern browsers that support IndexedDB:
 
 1. Clone the repository
 2. Install dependencies with `npm install`
-3. Run the development server with `npm run dev`
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+3. Set up environment variables for database connection
+4. Run the development server with `npm run dev`
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ## Usage
 
@@ -74,13 +80,15 @@ Works with all modern browsers that support IndexedDB:
 
 ## Data Persistence
 
-Your data is stored locally in your browser using IndexedDB. This means:
+Your data is stored securely in Neon Serverless PostgreSQL. This means:
 
-- Work completely offline with no internet connection required
-- Data persists between browser sessions on the same device
-- To use on different devices, export your data and import it on the other device
-- Regular backups are recommended by using the export functionality
+- Work from anywhere with an internet connection
+- Data persists between sessions and across devices
+- Multiple users can access and update the same data simultaneously
+- Automatic backups ensure your data is safe
+- Enterprise-grade security protects your sensitive compliance information
 
 ## License
 
 [MIT License](LICENSE)
+\`\`\`

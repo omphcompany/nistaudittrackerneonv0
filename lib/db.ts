@@ -1,375 +1,128 @@
-// Browser-based database service
-export interface NistControl {
-  id?: number
-  nistFunction: string
-  nistCategoryId: string
-  nistSubCategoryId: string
-  assessmentPriority: "High" | "Medium" | "Low"
-  controlDescription: string
-  cybersecurityDomain: string
-  meetsCriteria: "Yes" | "No"
-  identifiedRisks: string
-  riskDetails: string
-  remediationStatus: "Not Started" | "In Progress" | "Completed"
-  lastUpdated: Date
-}
+import { executeQuery } from "./db-connection"
+import type { NistControl } from "./types"
 
-class DatabaseService {
-  private dbName = "nistControlsDB"
-  private dbVersion = 1
-  private db: IDBDatabase | null = null
-  private isInitializing = false
-  private initPromise: Promise<boolean> | null = null
-
-  async init(): Promise<boolean> {
-    // If already initialized, return true
-    if (this.db) return true
-
-    // If already initializing, return the existing promise
-    if (this.isInitializing && this.initPromise) {
-      return this.initPromise
-    }
-
-    // Set initializing flag and create promise
-    this.isInitializing = true
-    this.initPromise = new Promise((resolve, reject) => {
-      try {
-        const request = indexedDB.open(this.dbName, this.dbVersion)
-
-        request.onupgradeneeded = (event) => {
-          const db = (event.target as IDBOpenDBRequest).result
-
-          // Create object stores if they don't exist
-          if (!db.objectStoreNames.contains("controls")) {
-            const store = db.createObjectStore("controls", { keyPath: "id", autoIncrement: true })
-            store.createIndex("nistFunction", "nistFunction", { unique: false })
-            store.createIndex("remediationStatus", "remediationStatus", { unique: false })
-            store.createIndex("assessmentPriority", "assessmentPriority", { unique: false })
-          }
-        }
-
-        request.onsuccess = (event) => {
-          this.db = (event.target as IDBOpenDBRequest).result
-          this.isInitializing = false
-          resolve(true)
-        }
-
-        request.onerror = (event) => {
-          console.error("Database error:", (event.target as IDBOpenDBRequest).error)
-          this.isInitializing = false
-          reject(false)
-        }
-      } catch (error) {
-        console.error("Error in init:", error)
-        this.isInitializing = false
-        reject(false)
-      }
-    })
-
-    return this.initPromise
-  }
-
-  async addControls(controls: NistControl[]): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for addControls")
-        return false
-      }
-    }
-
-    try {
-      // Add to IndexedDB
-      return await this.addControlsToIndexedDB(controls)
-    } catch (error) {
-      console.error("Error adding controls:", error)
-      return false
-    }
-  }
-
-  private async addControlsToIndexedDB(controls: NistControl[]): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        throw new Error("Failed to initialize database for addControlsToIndexedDB")
-      }
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(["controls"], "readwrite")
-        const store = transaction.objectStore("controls")
-
-        let successCount = 0
-
-        controls.forEach((control) => {
-          const request = store.add({
-            ...control,
-            lastUpdated: new Date(),
-          })
-
-          request.onsuccess = () => {
-            successCount++
-            if (successCount === controls.length) {
-              resolve(true)
-            }
-          }
-
-          request.onerror = (event) => {
-            console.error("Error adding control:", (event.target as IDBRequest).error)
-            reject(false)
-          }
-        })
-
-        transaction.oncomplete = () => {
-          resolve(true)
-        }
-
-        transaction.onerror = (event) => {
-          console.error("Transaction error:", event)
-          reject(false)
-        }
-      } catch (error) {
-        console.error("Error in addControlsToIndexedDB:", error)
-        reject(false)
-      }
-    })
-  }
-
-  async updateControl(control: NistControl): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for updateControl")
-        return false
-      }
-    }
-
-    try {
-      // Update in IndexedDB
-      return await this.updateControlInIndexedDB(control)
-    } catch (error) {
-      console.error("Error updating control:", error)
-      return false
-    }
-  }
-
-  private async updateControlInIndexedDB(control: NistControl): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        throw new Error("Failed to initialize database for updateControlInIndexedDB")
-      }
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(["controls"], "readwrite")
-        const store = transaction.objectStore("controls")
-
-        const request = store.put({
-          ...control,
-          lastUpdated: new Date(),
-        })
-
-        request.onsuccess = () => {
-          resolve(true)
-        }
-
-        request.onerror = (event) => {
-          console.error("Error updating control:", (event.target as IDBRequest).error)
-          reject(false)
-        }
-      } catch (error) {
-        console.error("Error in updateControlInIndexedDB:", error)
-        reject(false)
-      }
-    })
-  }
-
-  async deleteControl(id: number): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for deleteControl")
-        return false
-      }
-    }
-
-    try {
-      // Delete from IndexedDB
-      return await this.deleteControlFromIndexedDB(id)
-    } catch (error) {
-      console.error("Error deleting control:", error)
-      return false
-    }
-  }
-
-  private async deleteControlFromIndexedDB(id: number): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        throw new Error("Failed to initialize database for deleteControlFromIndexedDB")
-      }
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(["controls"], "readwrite")
-        const store = transaction.objectStore("controls")
-
-        const request = store.delete(id)
-
-        request.onsuccess = () => {
-          resolve(true)
-        }
-
-        request.onerror = (event) => {
-          console.error("Error deleting control:", (event.target as IDBRequest).error)
-          reject(false)
-        }
-      } catch (error) {
-        console.error("Error in deleteControlFromIndexedDB:", error)
-        reject(false)
-      }
-    })
-  }
-
-  async getAllControls(): Promise<NistControl[]> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for getAllControls")
-        return []
-      }
-    }
-
-    try {
-      return this.getAllControlsFromIndexedDB()
-    } catch (error) {
-      console.error("Error getting controls:", error)
-      return []
-    }
-  }
-
-  private async getAllControlsFromIndexedDB(): Promise<NistControl[]> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        throw new Error("Failed to initialize database for getAllControlsFromIndexedDB")
-      }
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(["controls"], "readonly")
-        const store = transaction.objectStore("controls")
-
-        const request = store.getAll()
-
-        request.onsuccess = () => {
-          resolve(request.result)
-        }
-
-        request.onerror = (event) => {
-          console.error("Error getting controls:", (event.target as IDBRequest).error)
-          reject([])
-        }
-      } catch (error) {
-        console.error("Error in getAllControlsFromIndexedDB:", error)
-        reject([])
-      }
-    })
-  }
-
-  async getControlsByFunction(nistFunction: string): Promise<NistControl[]> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for getControlsByFunction")
-        return []
-      }
-    }
-
-    // Get all controls and filter
-    const allControls = await this.getAllControls()
-    return allControls.filter((control) => control.nistFunction === nistFunction)
-  }
-
-  async getControlsByStatus(status: string): Promise<NistControl[]> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for getControlsByStatus")
-        return []
-      }
-    }
-
-    // Get all controls and filter
-    const allControls = await this.getAllControls()
-    return allControls.filter((control) => control.remediationStatus === status)
-  }
-
-  async clearAllData(): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        console.error("Failed to initialize database for clearAllData")
-        return false
-      }
-    }
-
-    try {
-      // Clear IndexedDB
-      return await this.clearIndexedDB()
-    } catch (error) {
-      console.error("Error clearing data:", error)
-      return false
-    }
-  }
-
-  private async clearIndexedDB(): Promise<boolean> {
-    // Ensure database is initialized
-    if (!this.db) {
-      await this.init()
-      if (!this.db) {
-        throw new Error("Failed to initialize database for clearIndexedDB")
-      }
-    }
-
-    return new Promise((resolve, reject) => {
-      try {
-        const transaction = this.db!.transaction(["controls"], "readwrite")
-        const store = transaction.objectStore("controls")
-
-        const request = store.clear()
-
-        request.onsuccess = () => {
-          resolve(true)
-        }
-
-        request.onerror = (event) => {
-          console.error("Error clearing data:", (event.target as IDBRequest).error)
-          reject(false)
-        }
-      } catch (error) {
-        console.error("Error in clearIndexedDB:", error)
-        reject(false)
-      }
-    })
+// Function to get all controls
+export async function getControls(): Promise<NistControl[]> {
+  try {
+    const result = await executeQuery(`
+      SELECT * FROM "NistControl"
+      ORDER BY "nistFunction", "nistSubCategoryId"
+    `)
+    return result.rows.map((row: any) => ({
+      control_id: row.nistSubCategoryId,
+      nist_function: row.nistFunction,
+      category: row.nistCategoryId,
+      subcategory: row.nistSubCategoryId,
+      title: row.controlDescription,
+      description: row.controlDescription,
+      priority: row.assessmentPriority,
+      status: row.remediationStatus,
+      compliance_level: row.meetsCriteria === "Yes" ? 100 : 0,
+      implementation_notes: row.riskDetails,
+      created_at: row.createdAt,
+      updated_at: row.updatedAt,
+    }))
+  } catch (error) {
+    console.error("Error fetching controls:", error)
+    throw new Error("Failed to fetch controls")
   }
 }
 
-// Singleton instance
-export const dbService = new DatabaseService()
+// Function to add controls
+export async function addControls(controls: NistControl[]): Promise<boolean> {
+  try {
+    // Begin transaction
+    await executeQuery("BEGIN")
+
+    for (const control of controls) {
+      await executeQuery(
+        `
+        INSERT INTO "NistControl" (
+          "nistFunction", "nistCategoryId", "nistSubCategoryId", 
+          "assessmentPriority", "controlDescription", "cybersecurityDomain", 
+          "meetsCriteria", "identifiedRisks", "riskDetails", "remediationStatus"
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        )
+        ON CONFLICT ("nistSubCategoryId") DO UPDATE SET
+          "nistFunction" = $1,
+          "nistCategoryId" = $2,
+          "assessmentPriority" = $4,
+          "controlDescription" = $5,
+          "cybersecurityDomain" = $6,
+          "meetsCriteria" = $7,
+          "identifiedRisks" = $8,
+          "riskDetails" = $9,
+          "remediationStatus" = $10,
+          "updatedAt" = CURRENT_TIMESTAMP
+      `,
+        [
+          control.nist_function,
+          control.category,
+          control.subcategory || control.control_id,
+          control.priority || "Medium",
+          control.description || control.title,
+          control.category.split(" ")[0], // Simplified domain extraction
+          control.compliance_level === 100 ? "Yes" : "No",
+          control.compliance_level < 100 ? "Yes" : "No",
+          control.implementation_notes || "",
+          control.status || "Not Started",
+        ],
+      )
+    }
+
+    // Commit transaction
+    await executeQuery("COMMIT")
+    return true
+  } catch (error) {
+    // Rollback on error
+    await executeQuery("ROLLBACK")
+    console.error("Error adding controls:", error)
+    throw new Error("Failed to add controls")
+  }
+}
+
+// Function to update a control
+export async function updateControl(control: NistControl): Promise<boolean> {
+  try {
+    await executeQuery(
+      `
+      UPDATE "NistControl" SET
+        "nistFunction" = $1,
+        "nistCategoryId" = $2,
+        "assessmentPriority" = $3,
+        "controlDescription" = $4,
+        "meetsCriteria" = $5,
+        "riskDetails" = $6,
+        "remediationStatus" = $7,
+        "updatedAt" = CURRENT_TIMESTAMP
+      WHERE "nistSubCategoryId" = $8
+    `,
+      [
+        control.nist_function,
+        control.category,
+        control.priority || "Medium",
+        control.description || control.title,
+        control.compliance_level === 100 ? "Yes" : "No",
+        control.implementation_notes || "",
+        control.status || "Not Started",
+        control.control_id,
+      ],
+    )
+    return true
+  } catch (error) {
+    console.error("Error updating control:", error)
+    throw new Error("Failed to update control")
+  }
+}
+
+// Function to clear all data
+export async function clearAllData(): Promise<boolean> {
+  try {
+    await executeQuery('TRUNCATE TABLE "NistControl"')
+    return true
+  } catch (error) {
+    console.error("Error clearing data:", error)
+    throw new Error("Failed to clear data")
+  }
+}

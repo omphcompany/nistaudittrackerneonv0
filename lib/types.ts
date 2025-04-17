@@ -1,25 +1,23 @@
+// NIST Control type definition
 export interface NistControl {
   id?: number
-  nistFunction: string
-  nistCategoryId: string
-  nistSubCategoryId: string
-  assessmentPriority: "High" | "Medium" | "Low"
-  controlDescription: string
-  cybersecurityDomain: string
-  meetsCriteria: "Yes" | "No"
-  identifiedRisks: string
-  riskDetails: string
-  remediationStatus: "Not Started" | "In Progress" | "Completed"
-  lastUpdated: Date
-  createdAt?: Date
-  updatedAt?: Date
+  nist_function: string
+  category: string
+  subcategory: string
+  title: string
+  description: string
+  priority: string
+  status: string
+  compliance_level: number
+  implementation_notes: string
+  created_at?: Date
+  updated_at?: Date
+  control_id: string
+  cybersecurityDomain?: string
+  meetsCriteria?: string
+  identifiedRisks?: string
+  riskDetails?: string
+  remediationStatus?: string
 }
 
-export interface ExcelFile {
-  id?: number
-  filename: string
-  description?: string
-  fileSize: number
-  uploadedAt: Date
-  uploadedBy?: string
-}
+export type Control = NistControl

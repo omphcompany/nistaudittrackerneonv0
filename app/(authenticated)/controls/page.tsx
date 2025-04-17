@@ -1,149 +1,147 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useData } from "@/contexts/data-context"
-import type { NistControl } from "@/lib/db"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Search, Filter, Edit, Save } from "lucide-react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Skeleton } from "@/components/ui/skeleton"
-import { useToast } from "@/components/ui/use-toast"
+import { AlertCircle, Search, Filter, ArrowUpDown } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { RefreshButton } from "@/components/refresh-button"
 
 export default function ControlsExplorer() {
-  const { controls, loading, error, updateControl } = useData()
-  const { toast } = useToast()
-
+  const { controls, loading, error } = useData()
   const [searchTerm, setSearchTerm] = useState("")
-  const [functionFilter, setFunctionFilter] = useState<string>("")
-  const [priorityFilter, setPriorityFilter] = useState<string>("")
-  const [statusFilter, setStatusFilter] = useState<string>("")
-  const [complianceFilter, setComplianceFilter] = useState<string>("")
+  const [filteredControls, setFilteredControls] = useState([])
+  const [activeTab, setActiveTab] = useState("all")
+  const [sortConfig, setSortConfig] = useState({ key: "id", direction: "ascending" })
+  const [selectedFilters, setSelectedFilters] = useState({
+    function: [],
+    status: [],
+    priority: [],
+  })
+  const [showFilters, setShowFilters] = useState(false)
 
-  const [editingControl, setEditingControl] = useState<NistControl | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  // Filter and sort controls when data changes
+  useEffect(() => {
+    if (!controls) return
 
-  // Extract unique values for filters
-  const nistFunctions = useMemo(() => {
-    const functions = new Set(controls.map((c) => c.nistFunction))
-    return Array.from(functions).sort()
-  }, [controls])
+    let filtered = [...controls]
 
-  // Filter controls based on search and filters
-  const filteredControls = useMemo(() => {
-    return controls.filter((control) => {
-      // Search term filter
-      const searchLower = searchTerm.toLowerCase()
-      const matchesSearch =
-        searchTerm === "" ||
-        control.controlDescription.toLowerCase().includes(searchLower) ||
-        control.nistSubCategoryId.toLowerCase().includes(searchLower) ||
-        control.identifiedRisks.toLowerCase().includes(searchLower)
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      filtered = filtered.filter(
+        (control) =>
+          control.id.toLowerCase().includes(term) ||
+          control.name.toLowerCase().includes(term) ||
+          control.description.toLowerCase().includes(term),
+      )
+    }
 
-      // Function filter
-      const matchesFunction = functionFilter === "" || control.nistFunction === functionFilter
+    // Apply tab filter
+    if (activeTab !== "all") {
+      filtered = filtered.filter((control) => control.function === activeTab)
+    }
 
-      // Priority filter
-      const matchesPriority = priorityFilter === "" || control.assessmentPriority === priorityFilter
+    // Apply advanced filters
+    if (selectedFilters.function.length > 0) {
+      filtered = filtered.filter((control) => selectedFilters.function.includes(control.function))
+    }
 
-      // Status filter
-      const matchesStatus = statusFilter === "" || control.remediationStatus === statusFilter
+    if (selectedFilters.status.length > 0) {
+      filtered = filtered.filter((control) => selectedFilters.status.includes(control.status))
+    }
 
-      // Compliance filter
-      const matchesCompliance = complianceFilter === "" || control.meetsCriteria === complianceFilter
+    if (selectedFilters.priority.length > 0) {
+      filtered = filtered.filter((control) => selectedFilters.priority.includes(control.priority))
+    }
 
-      return matchesSearch && matchesFunction && matchesPriority && matchesStatus && matchesCompliance
+    // Apply sorting
+    filtered.sort((a, b) => {
+      if (a[sortConfig.key] < b[sortConfig.key]) {
+        return sortConfig.direction === "ascending" ? -1 : 1
+      }
+      if (a[sortConfig.key] > b[sortConfig.key]) {
+        return sortConfig.direction === "ascending" ? 1 : -1
+      }
+      return 0
     })
-  }, [controls, searchTerm, functionFilter, priorityFilter, statusFilter, complianceFilter])
 
-  const handleEditControl = (control: NistControl) => {
-    setEditingControl({ ...control })
-    setIsDialogOpen(true)
+    setFilteredControls(filtered)
+  }, [controls, searchTerm, activeTab, sortConfig, selectedFilters])
+
+  const handleSort = (key) => {
+    setSortConfig((prevConfig) => ({
+      key,
+      direction: prevConfig.key === key && prevConfig.direction === "ascending" ? "descending" : "ascending",
+    }))
   }
 
-  const handleSaveControl = async () => {
-    if (!editingControl) return
-
-    try {
-      const result = await updateControl(editingControl)
-
-      if (result) {
-        toast({
-          title: "Control Updated",
-          description: "The control has been updated successfully.",
-        })
-        setIsDialogOpen(false)
+  const toggleFilter = (type, value) => {
+    setSelectedFilters((prev) => {
+      const current = [...prev[type]]
+      if (current.includes(value)) {
+        return { ...prev, [type]: current.filter((item) => item !== value) }
       } else {
-        toast({
-          title: "Update Failed",
-          description: "Failed to update the control.",
-          variant: "destructive",
-        })
+        return { ...prev, [type]: [...current, value] }
       }
-    } catch (err) {
-      console.error("Error updating control:", err)
-      toast({
-        title: "Update Failed",
-        description: "An error occurred while updating the control.",
-        variant: "destructive",
-      })
+    })
+  }
+
+  const clearFilters = () => {
+    setSelectedFilters({
+      function: [],
+      status: [],
+      priority: [],
+    })
+    setSearchTerm("")
+  }
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case "Compliant":
+        return <Badge className="bg-green-500">Compliant</Badge>
+      case "Non-Compliant":
+        return <Badge className="bg-red-500">Non-Compliant</Badge>
+      case "Partially Compliant":
+        return <Badge className="bg-yellow-500">Partial</Badge>
+      case "Not Applicable":
+        return <Badge variant="outline">N/A</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
     }
   }
 
-  const resetFilters = () => {
-    setSearchTerm("")
-    setFunctionFilter("")
-    setPriorityFilter("")
-    setStatusFilter("")
-    setComplianceFilter("")
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case "High":
+        return <Badge className="bg-red-500">High</Badge>
+      case "Medium":
+        return <Badge className="bg-yellow-500">Medium</Badge>
+      case "Low":
+        return <Badge className="bg-green-500">Low</Badge>
+      default:
+        return <Badge variant="outline">{priority}</Badge>
+    }
   }
 
-  if (loading) {
+  // No data state
+  if (controls.length === 0) {
     return (
       <div className="container mx-auto p-6">
         <h1 className="text-3xl font-bold mb-6">Controls Explorer</h1>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-1/3" />
-            <Skeleton className="h-4 w-1/2" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-full" />
-              <div className="grid grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <Skeleton key={i} className="h-10" />
-                ))}
-              </div>
-              <Skeleton className="h-[400px] w-full" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="container mx-auto p-6">
-        <Alert variant="destructive">
+        <Alert>
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle>No Data</AlertTitle>
+          <AlertDescription>
+            No controls data found. Please upload data in the Data Management section.
+          </AlertDescription>
         </Alert>
       </div>
     )
@@ -151,348 +149,283 @@ export default function ControlsExplorer() {
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-2">Controls Explorer</h1>
-      <p className="text-muted-foreground mb-6">View, filter, and manage your NIST controls</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Controls Explorer</h1>
+          <p className="text-muted-foreground">Browse, filter, and search through your NIST CSF 2.0 controls</p>
+        </div>
+        <RefreshButton />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>NIST CSF 2.0 Controls</CardTitle>
-          <CardDescription>View and manage all controls. Use the filters to narrow down the results.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {controls.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>No Data</AlertTitle>
-              <AlertDescription>
-                No controls data found. Please upload data in the Data Management section.
-              </AlertDescription>
-            </Alert>
-          ) : (
-            <div className="space-y-4">
-              {/* Search and Filters */}
-              <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
-                <div className="relative flex-1 w-full">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search controls..."
-                    className="pl-8 w-full"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <Button variant="outline" onClick={resetFilters} className="whitespace-nowrap">
-                  <Filter className="mr-2 h-4 w-4" />
-                  Reset Filters
-                </Button>
+      <div className="mb-6">
+        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+          <div className="flex justify-between items-center mb-4">
+            <TabsList>
+              <TabsTrigger value="all">All Controls</TabsTrigger>
+              <TabsTrigger value="ID">Identify</TabsTrigger>
+              <TabsTrigger value="PR">Protect</TabsTrigger>
+              <TabsTrigger value="DE">Detect</TabsTrigger>
+              <TabsTrigger value="RS">Respond</TabsTrigger>
+              <TabsTrigger value="RC">Recover</TabsTrigger>
+            </TabsList>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-1"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+              </Button>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search controls..."
+                  className="w-[200px] pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 p-4 bg-muted/30 rounded-lg">
-                <div>
-                  <Label htmlFor="function-filter" className="text-xs mb-1 block">
-                    NIST Function
-                  </Label>
-                  <Select value={functionFilter} onValueChange={setFunctionFilter}>
-                    <SelectTrigger id="function-filter">
-                      <SelectValue placeholder="All Functions" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Functions</SelectItem>
-                      {nistFunctions.map((func) => (
-                        <SelectItem key={func} value={func}>
-                          {func}
-                        </SelectItem>
+          {showFilters && (
+            <Card className="mb-4">
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-center">
+                  <CardTitle className="text-lg">Advanced Filters</CardTitle>
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear All
+                  </Button>
+                </div>
+                <CardDescription>Filter controls by multiple criteria</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <h3 className="font-medium mb-2">Function</h3>
+                    <div className="space-y-2">
+                      {["ID", "PR", "DE", "RS", "RC"].map((func) => (
+                        <div key={func} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`function-${func}`}
+                            checked={selectedFilters.function.includes(func)}
+                            onCheckedChange={() => toggleFilter("function", func)}
+                          />
+                          <label
+                            htmlFor={`function-${func}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {func}
+                          </label>
+                        </div>
                       ))}
-                    </SelectContent>
-                  </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">Status</h3>
+                    <div className="space-y-2">
+                      {["Compliant", "Non-Compliant", "Partially Compliant", "Not Applicable"].map((status) => (
+                        <div key={status} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`status-${status}`}
+                            checked={selectedFilters.status.includes(status)}
+                            onCheckedChange={() => toggleFilter("status", status)}
+                          />
+                          <label
+                            htmlFor={`status-${status}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {status}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-medium mb-2">Priority</h3>
+                    <div className="space-y-2">
+                      {["High", "Medium", "Low"].map((priority) => (
+                        <div key={priority} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`priority-${priority}`}
+                            checked={selectedFilters.priority.includes(priority)}
+                            onCheckedChange={() => toggleFilter("priority", priority)}
+                          />
+                          <label
+                            htmlFor={`priority-${priority}`}
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                          >
+                            {priority}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-
-                <div>
-                  <Label htmlFor="priority-filter" className="text-xs mb-1 block">
-                    Priority
-                  </Label>
-                  <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                    <SelectTrigger id="priority-filter">
-                      <SelectValue placeholder="All Priorities" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Priorities</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="status-filter" className="text-xs mb-1 block">
-                    Remediation Status
-                  </Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger id="status-filter">
-                      <SelectValue placeholder="All Statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="Not Started">Not Started</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="compliance-filter" className="text-xs mb-1 block">
-                    Compliance Status
-                  </Label>
-                  <Select value={complianceFilter} onValueChange={setComplianceFilter}>
-                    <SelectTrigger id="compliance-filter">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      <SelectItem value="Yes">Compliant</SelectItem>
-                      <SelectItem value="No">Non-Compliant</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Results count */}
-              <div className="text-sm text-muted-foreground">
-                Showing {filteredControls.length} of {controls.length} controls
-              </div>
-
-              {/* Controls Table */}
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Function</TableHead>
-                      <TableHead>Sub-Category ID</TableHead>
-                      <TableHead>Priority</TableHead>
-                      <TableHead className="hidden md:table-cell">Control Description</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Compliance</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredControls.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
-                          No controls match the current filters
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredControls.map((control) => (
-                        <TableRow key={control.id}>
-                          <TableCell>
-                            <Badge variant="outline">{control.nistFunction}</Badge>
-                          </TableCell>
-                          <TableCell>{control.nistSubCategoryId}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                control.assessmentPriority === "High"
-                                  ? "destructive"
-                                  : control.assessmentPriority === "Medium"
-                                    ? "default"
-                                    : "outline"
-                              }
-                            >
-                              {control.assessmentPriority}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden md:table-cell max-w-xs truncate">
-                            {control.controlDescription}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                control.remediationStatus === "Completed"
-                                  ? "success"
-                                  : control.remediationStatus === "In Progress"
-                                    ? "default"
-                                    : "destructive"
-                              }
-                            >
-                              {control.remediationStatus}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={control.meetsCriteria === "Yes" ? "success" : "destructive"}>
-                              {control.meetsCriteria}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditControl(control)}>
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
 
-      {/* Edit Control Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>Edit Control</DialogTitle>
-            <DialogDescription>Update the control information and remediation status.</DialogDescription>
-          </DialogHeader>
+          <TabsContent value="all" className="mt-0">
+            <ControlsTable
+              controls={filteredControls}
+              sortConfig={sortConfig}
+              handleSort={handleSort}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+            />
+          </TabsContent>
+          <TabsContent value="ID" className="mt-0">
+            <ControlsTable
+              controls={filteredControls}
+              sortConfig={sortConfig}
+              handleSort={handleSort}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+            />
+          </TabsContent>
+          <TabsContent value="PR" className="mt-0">
+            <ControlsTable
+              controls={filteredControls}
+              sortConfig={sortConfig}
+              handleSort={handleSort}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+            />
+          </TabsContent>
+          <TabsContent value="DE" className="mt-0">
+            <ControlsTable
+              controls={filteredControls}
+              sortConfig={sortConfig}
+              handleSort={handleSort}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+            />
+          </TabsContent>
+          <TabsContent value="RS" className="mt-0">
+            <ControlsTable
+              controls={filteredControls}
+              sortConfig={sortConfig}
+              handleSort={handleSort}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+            />
+          </TabsContent>
+          <TabsContent value="RC" className="mt-0">
+            <ControlsTable
+              controls={filteredControls}
+              sortConfig={sortConfig}
+              handleSort={handleSort}
+              getStatusBadge={getStatusBadge}
+              getPriorityBadge={getPriorityBadge}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  )
+}
 
-          {editingControl && (
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="nist-function">NIST Function</Label>
-                  <Input
-                    id="nist-function"
-                    value={editingControl.nistFunction}
-                    onChange={(e) => setEditingControl({ ...editingControl, nistFunction: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="nist-category">NIST Category & ID</Label>
-                  <Input
-                    id="nist-category"
-                    value={editingControl.nistCategoryId}
-                    onChange={(e) => setEditingControl({ ...editingControl, nistCategoryId: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-4 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="nist-subcategory">NIST Sub-Category & ID</Label>
-                  <Input
-                    id="nist-subcategory"
-                    value={editingControl.nistSubCategoryId}
-                    onChange={(e) => setEditingControl({ ...editingControl, nistSubCategoryId: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Label htmlFor="assessment-priority">Assessment Priority</Label>
-                  <Select
-                    value={editingControl.assessmentPriority}
-                    onValueChange={(value) =>
-                      setEditingControl({ ...editingControl, assessmentPriority: value as "High" | "Medium" | "Low" })
-                    }
-                  >
-                    <SelectTrigger id="assessment-priority">
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="Low">Low</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="control-description">Control Description</Label>
-                <Textarea
-                  id="control-description"
-                  value={editingControl.controlDescription}
-                  onChange={(e) => setEditingControl({ ...editingControl, controlDescription: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="cybersecurity-domain">Cybersecurity Domain</Label>
-                  <Input
-                    id="cybersecurity-domain"
-                    value={editingControl.cybersecurityDomain}
-                    onChange={(e) => setEditingControl({ ...editingControl, cybersecurityDomain: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="meets-criteria">Meets Criteria</Label>
-                  <Select
-                    value={editingControl.meetsCriteria}
-                    onValueChange={(value) =>
-                      setEditingControl({ ...editingControl, meetsCriteria: value as "Yes" | "No" })
-                    }
-                  >
-                    <SelectTrigger id="meets-criteria">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Yes">Yes</SelectItem>
-                      <SelectItem value="No">No</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="identified-risks">Identified Risks</Label>
-                <Textarea
-                  id="identified-risks"
-                  value={editingControl.identifiedRisks}
-                  onChange={(e) => setEditingControl({ ...editingControl, identifiedRisks: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="risk-details">Risk Details</Label>
-                <Textarea
-                  id="risk-details"
-                  value={editingControl.riskDetails}
-                  onChange={(e) => setEditingControl({ ...editingControl, riskDetails: e.target.value })}
-                  rows={3}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="remediation-status">Remediation Status</Label>
-                <Select
-                  value={editingControl.remediationStatus}
-                  onValueChange={(value) =>
-                    setEditingControl({
-                      ...editingControl,
-                      remediationStatus: value as "Not Started" | "In Progress" | "Completed",
-                    })
-                  }
+function ControlsTable({ controls, sortConfig, handleSort, getStatusBadge, getPriorityBadge }) {
+  return (
+    <div className="rounded-md border">
+      <ScrollArea className="h-[calc(100vh-300px)]">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-[100px]">
+                <Button variant="ghost" size="sm" onClick={() => handleSort("id")} className="flex items-center gap-1">
+                  ID
+                  <ArrowUpDown className="h-3 w-3" />
+                </Button>
+              </TableHead>
+              <TableHead>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("name")}
+                  className="flex items-center gap-1"
                 >
-                  <SelectTrigger id="remediation-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Not Started">Not Started</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Completed">Completed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSaveControl}>
-              <Save className="mr-2 h-4 w-4" />
-              Save Changes
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+                  Name
+                  <ArrowUpDown className="h-3 w-3" />
+                </Button>
+              </TableHead>
+              <TableHead className="w-[100px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("function")}
+                  className="flex items-center gap-1"
+                >
+                  Function
+                  <ArrowUpDown className="h-3 w-3" />
+                </Button>
+              </TableHead>
+              <TableHead className="w-[120px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("status")}
+                  className="flex items-center gap-1"
+                >
+                  Status
+                  <ArrowUpDown className="h-3 w-3" />
+                </Button>
+              </TableHead>
+              <TableHead className="w-[100px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("priority")}
+                  className="flex items-center gap-1"
+                >
+                  Priority
+                  <ArrowUpDown className="h-3 w-3" />
+                </Button>
+              </TableHead>
+              <TableHead className="w-[150px]">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleSort("dueDate")}
+                  className="flex items-center gap-1"
+                >
+                  Due Date
+                  <ArrowUpDown className="h-3 w-3" />
+                </Button>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {controls.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                  No results found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              controls.map((control) => (
+                <TableRow key={control.id}>
+                  <TableCell className="font-medium">{control.id}</TableCell>
+                  <TableCell>
+                    <div>
+                      <div className="font-medium">{control.name}</div>
+                      <div className="text-sm text-muted-foreground line-clamp-1">{control.description}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{control.function}</TableCell>
+                  <TableCell>{getStatusBadge(control.status)}</TableCell>
+                  <TableCell>{getPriorityBadge(control.priority)}</TableCell>
+                  <TableCell>{control.dueDate}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
     </div>
   )
 }

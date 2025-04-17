@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useTheme } from "next-themes"
 import { ChartContainer } from "@/components/ui/chart"
+import { RefreshButton } from "@/components/refresh-button"
 import {
   Bar,
   BarChart,
@@ -400,6 +401,7 @@ export default function Dashboard() {
             Track and monitor your NIST controls compliance and remediation status
           </p>
         </div>
+        <RefreshButton />
       </div>
 
       {/* Summary Cards */}
@@ -554,7 +556,13 @@ export default function Dashboard() {
                             return null
                           }}
                         />
-                        <Legend />
+                        <Legend
+                          wrapperStyle={{
+                            fontSize: "0.7rem", // Smaller font size
+                            lineHeight: "1rem",
+                            paddingTop: "0.5rem",
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </ChartContainer>
@@ -585,19 +593,25 @@ export default function Dashboard() {
                               return (
                                 <div className="bg-white dark:bg-gray-800 p-3 border rounded shadow-lg">
                                   <p className="font-bold">{payload[0].name}</p>
-                                  <p>Value: {payload[0].value}</p>
+                                  <p>Priority: {payload[0].value}</p>
                                 </div>
                               )
                             }
                             return null
                           }}
                         />
-                        <Bar dataKey="value" nameKey="name">
+                        <Bar dataKey="value" nameKey="name" name="Priority">
                           {priorityData.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
                         </Bar>
-                        <Legend />
+                        <Legend
+                          wrapperStyle={{
+                            fontSize: "0.7rem", // Smaller font size
+                            lineHeight: "1rem",
+                            paddingTop: "0.5rem",
+                          }}
+                        />
                       </BarChart>
                     </ResponsiveContainer>
                   </ChartContainer>
@@ -648,7 +662,13 @@ export default function Dashboard() {
                             return null
                           }}
                         />
-                        <Legend />
+                        <Legend
+                          wrapperStyle={{
+                            fontSize: "0.7rem", // Smaller font size
+                            lineHeight: "1rem",
+                            paddingTop: "0.5rem",
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </ChartContainer>
@@ -697,6 +717,11 @@ export default function Dashboard() {
                         <Legend
                           formatter={(value) => {
                             return <span style={{ color: "#3b82f6" }}>{value}</span>
+                          }}
+                          wrapperStyle={{
+                            fontSize: "0.7rem", // Smaller font size
+                            lineHeight: "1rem",
+                            paddingTop: "0.5rem",
                           }}
                         />
                       </BarChart>
@@ -769,7 +794,11 @@ export default function Dashboard() {
                             layout="vertical"
                             verticalAlign="middle"
                             align="right"
-                            wrapperStyle={{ paddingLeft: "10px" }}
+                            wrapperStyle={{
+                              fontSize: "0.7rem", // Smaller font size
+                              lineHeight: "1rem",
+                              paddingTop: "0.5rem",
+                            }}
                           />
                           <Tooltip
                             content={({ active, payload }) => {
@@ -948,7 +977,13 @@ export default function Dashboard() {
                               return null
                             }}
                           />
-                          <Legend />
+                          <Legend
+                            wrapperStyle={{
+                              fontSize: "0.7rem", // Smaller font size
+                              lineHeight: "1rem",
+                              paddingTop: "0.5rem",
+                            }}
+                          />
                           <Area
                             type="monotone"
                             dataKey="closed"
@@ -988,7 +1023,6 @@ export default function Dashboard() {
           <TabsContent value="compliance" className="mt-6">
             <div className="grid gap-6 md:grid-cols-2">
               {/* Stacked Bar Chart - Compliance by NIST Function */}
-
               <Card className="col-span-1 overflow-hidden">
                 <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
                   <CardTitle>Compliance by NIST Function</CardTitle>
@@ -1030,6 +1064,11 @@ export default function Dashboard() {
                         <Legend
                           formatter={(value) => {
                             return <span style={{ color: "#09b079" }}>{value}</span>
+                          }}
+                          wrapperStyle={{
+                            fontSize: "0.7rem", // Smaller font size
+                            lineHeight: "1rem",
+                            paddingTop: "0.5rem",
                           }}
                         />
                         <Bar dataKey="compliantRate" name="Compliance Rate (%)">
@@ -1091,7 +1130,13 @@ export default function Dashboard() {
                               return null
                             }}
                           />
-                          <Legend />
+                          <Legend
+                            wrapperStyle={{
+                              fontSize: "0.7rem", // Smaller font size
+                              lineHeight: "1rem",
+                              paddingTop: "0.5rem",
+                            }}
+                          />
                         </PieChart>
                       </ResponsiveContainer>
                     </ChartContainer>
@@ -1259,7 +1304,13 @@ export default function Dashboard() {
                                 return null
                               }}
                             />
-                            <Legend />
+                            <Legend
+                              wrapperStyle={{
+                                fontSize: "0.7rem", // Smaller font size
+                                lineHeight: "1rem",
+                                paddingTop: "0.5rem",
+                              }}
+                            />
                             <Bar dataKey="high" stackId="a" name="High Priority" fill="#ef4444" />
                             <Bar dataKey="medium" stackId="a" name="Medium Priority" fill="#f59e0b" />
                             <Bar dataKey="low" stackId="a" name="Low Priority" fill="#10b981" />
@@ -1291,8 +1342,7 @@ export default function Dashboard() {
                       onClick={() => setBurndownTimeframe(2)}
                       className={`px-4 py-2 text-sm font-medium ${
                         burndownTimeframe === 2 ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/80"
-                      }\`}  : "bg-muted hover:bg-muted/80"
-                                            }`}
+                      }`}
                     >
                       2 Years
                     </button>
@@ -1342,7 +1392,13 @@ export default function Dashboard() {
                               return null
                             }}
                           />
-                          <Legend />
+                          <Legend
+                            wrapperStyle={{
+                              fontSize: "0.7rem", // Smaller font size
+                              lineHeight: "1rem",
+                              paddingTop: "0.5rem",
+                            }}
+                          />
                           <Area
                             type="monotone"
                             dataKey="highRisks"
@@ -1561,7 +1617,13 @@ export default function Dashboard() {
                                 return null
                               }}
                             />
-                            <Legend />
+                            <Legend
+                              wrapperStyle={{
+                                fontSize: "0.7rem", // Smaller font size
+                                lineHeight: "1rem",
+                                paddingTop: "0.5rem",
+                              }}
+                            />
                             <Area
                               type="monotone"
                               dataKey="completed"
@@ -1672,7 +1734,13 @@ export default function Dashboard() {
                               return null
                             }}
                           />
-                          <Legend />
+                          <Legend
+                            wrapperStyle={{
+                              fontSize: "0.7rem", // Smaller font size
+                              lineHeight: "1rem",
+                              paddingTop: "0.5rem",
+                            }}
+                          />
                           <Bar dataKey="compliance" name="Compliance Rate" barSize={20} fill="#3b82f6" />
                           <Bar dataKey="gap" name="Gap to Target" barSize={20} fill="#ef4444" />
                           <Line type="monotone" dataKey="target" name="Target" stroke="#10b981" strokeWidth={2} />

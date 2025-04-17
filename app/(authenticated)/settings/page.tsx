@@ -20,7 +20,7 @@ export default function Settings() {
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false)
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true)
-  const [syncInterval, setSyncInterval] = useState(30)
+  const [syncInterval, setSyncInterval] = useState(120)
   const [isOnline, setIsOnline] = useState(true)
   const [databaseUrl, setDatabaseUrl] = useState("")
 
@@ -60,7 +60,7 @@ export default function Settings() {
   const handleResetSettings = () => {
     setNotificationsEnabled(false)
     setAutoSaveEnabled(true)
-    setSyncInterval(30)
+    setSyncInterval(120)
     setTheme("system")
 
     toast({

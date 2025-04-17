@@ -10,7 +10,7 @@ export function AppNavigation() {
   const pathname = usePathname()
   const { logout } = useAuth()
 
-  const isActive = (path: string) => pathname === path
+  const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`)
 
   const mainNavItems = [
     { name: "Introduction", href: "/introduction", icon: Home },

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { executeQuery } from "@/lib/db-connection"
+import { neon } from "@neondatabase/serverless"
 
 // Mark this file as server-side only
 export const runtime = "nodejs"
@@ -9,10 +9,20 @@ export async function GET() {
   try {
     console.log("API: Fetching all controls")
 
-    // Add a database connection test first
+    // Get the database URL
+    const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
+
+    if (!databaseUrl) {
+      return NextResponse.json({ error: "No database URL found in environment variables" }, { status: 500 })
+    }
+
+    // Create a new SQL client directly
+    const sql = neon(databaseUrl)
+
+    // Test with a simple query using tagged template literal
     try {
-      const connectionTest = await executeQuery("SELECT 1 as connection_test")
-      console.log("Database connection test:", connectionTest.rows)
+      const connectionTest = await sql`SELECT 1 as connection_test`
+      console.log("Database connection test:", connectionTest)
     } catch (connError) {
       console.error("Database connection test failed:", connError)
       return NextResponse.json(
@@ -25,15 +35,16 @@ export async function GET() {
     }
 
     // If connection test passes, proceed with the actual query
-    const result = await executeQuery(`
+    // Use tagged template literal for the query
+    const result = await sql`
       SELECT * FROM "NistControl" 
       ORDER BY "lastUpdated" DESC
-    `)
+    `
 
     // Add console log for debugging
-    console.log(`API: Retrieved ${result.rows.length} controls from database`)
+    console.log(`API: Retrieved ${result.length} controls from database`)
 
-    return NextResponse.json(result.rows)
+    return NextResponse.json(result)
   } catch (error) {
     // Enhanced error logging
     console.error("API: Error fetching controls:", error)
@@ -61,13 +72,24 @@ export async function POST(request: Request) {
 
     console.log(`API: Received request to add ${controls.length} controls`)
 
+    // Get the database URL
+    const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
+
+    if (!databaseUrl) {
+      return NextResponse.json({ error: "No database URL found in environment variables" }, { status: 500 })
+    }
+
+    // Create a new SQL client directly
+    const sql = neon(databaseUrl)
+
     const insertedControls = []
 
     for (const control of controls) {
       const currentTime = new Date()
 
-      const result = await executeQuery(
-        `INSERT INTO "NistControl" (
+      // Use tagged template literal for the query
+      const result = await sql`
+        INSERT INTO "NistControl" (
           "nistFunction", 
           "nistCategoryId", 
           "nistSubCategoryId", 
@@ -81,26 +103,25 @@ export async function POST(request: Request) {
           "lastUpdated",
           "createdAt",
           "updatedAt"
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING *`,
-        [
-          control.nistFunction,
-          control.nistCategoryId,
-          control.nistSubCategoryId,
-          control.assessmentPriority,
-          control.controlDescription,
-          control.cybersecurityDomain,
-          control.meetsCriteria,
-          control.identifiedRisks,
-          control.riskDetails,
-          control.remediationStatus,
-          currentTime,
-          currentTime,
-          currentTime,
-        ],
-      )
+        ) VALUES (
+          ${control.nistFunction},
+          ${control.nistCategoryId},
+          ${control.nistSubCategoryId},
+          ${control.assessmentPriority},
+          ${control.controlDescription},
+          ${control.cybersecurityDomain},
+          ${control.meetsCriteria},
+          ${control.identifiedRisks},
+          ${control.riskDetails},
+          ${control.remediationStatus},
+          ${currentTime},
+          ${currentTime},
+          ${currentTime}
+        )
+        RETURNING *
+      `
 
-      insertedControls.push(result.rows[0])
+      insertedControls.push(result[0])
     }
 
     console.log(`API: Successfully inserted ${insertedControls.length} controls`)
@@ -116,7 +137,19 @@ export async function POST(request: Request) {
 export async function DELETE() {
   try {
     console.log("API: Deleting all controls")
-    await executeQuery('DELETE FROM "NistControl"')
+
+    // Get the database URL
+    const databaseUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL
+
+    if (!databaseUrl) {
+      return NextResponse.json({ error: "No database URL found in environment variables" }, { status: 500 })
+    }
+
+    // Create a new SQL client directly
+    const sql = neon(databaseUrl)
+
+    // Use tagged template literal for the query
+    await sql`DELETE FROM "NistControl"`
 
     console.log("API: Successfully deleted all controls from database")
 

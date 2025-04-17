@@ -1,5 +1,5 @@
-import { read, utils } from "xlsx"
-import type { NistControl } from "./types"
+import * as XLSX from "xlsx"
+import type { NistControl } from "@/lib/types"
 
 export async function parseExcelFile(file: File): Promise<NistControl[]> {
   return new Promise((resolve, reject) => {
@@ -7,88 +7,65 @@ export async function parseExcelFile(file: File): Promise<NistControl[]> {
 
     reader.onload = (e) => {
       try {
-        if (!e.target || !e.target.result) {
-          throw new Error("Failed to read file")
-        }
-
-        const data = new Uint8Array(e.target.result as ArrayBuffer)
-        const workbook = read(data, { type: "array" })
-
-        // Assume first sheet
-        const firstSheetName = workbook.SheetNames[0]
-        if (!firstSheetName) {
-          throw new Error("Excel file has no sheets")
-        }
-
-        const worksheet = workbook.Sheets[firstSheetName]
+        const data = e.target?.result
+        const workbook = XLSX.read(data, { type: "binary" })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
 
         // Convert to JSON
-        const jsonData = utils.sheet_to_json(worksheet)
-        console.log("Parsed Excel data:", jsonData.length, "rows")
+        const jsonData = XLSX.utils.sheet_to_json(worksheet)
 
-        if (jsonData.length === 0) {
-          throw new Error("No data found in Excel file")
-        }
+        // Map to NistControl objects
+        const controls: NistControl[] = jsonData.map((row: any) => {
+          return {
+            control_id:
+              row["NIST Sub-Category & ID"] || `${row["NIST Function"]}.${Math.random().toString(36).substring(2, 7)}`,
+            nist_function: row["NIST Function"],
+            category: row["NIST Category & ID"],
+            subcategory: row["NIST Sub-Category & ID"],
+            title: row["Control Description"] || "Untitled Control",
+            description: row["Control Description"],
+            priority: row["Assessment Priority"] || "Medium",
+            status: row["Remediation Status"] || "Not Started",
+            compliance_level: row["Meets Criteria"] === "Yes" ? 100 : 0,
+            implementation_notes: row["Risk Details"] || "",
+          }
+        })
 
-        // Current timestamp for all date fields
-        const currentTime = new Date()
-
-        // Map to our data structure
-        const controls: NistControl[] = jsonData.map((row: any) => ({
-          nistFunction: row["NIST Function"] || "",
-          nistCategoryId: row["NIST Category & ID"] || "",
-          nistSubCategoryId: row["NIST Sub-Category & ID"] || "",
-          assessmentPriority: row["Assessment Priority"] || "Medium",
-          controlDescription: row["Control Description"] || "",
-          cybersecurityDomain: row["Cybersecurity Domain"] || "",
-          meetsCriteria: row["Meets Criteria (Yes/No)"] || "No",
-          identifiedRisks: row["Identified Risks"] || "",
-          riskDetails: row["Risk Details"] || "",
-          remediationStatus: row["Remediation Status"] || "Not Started",
-          lastUpdated: currentTime,
-          createdAt: currentTime,
-          updatedAt: currentTime,
-        }))
-
-        console.log("Mapped to", controls.length, "control objects")
         resolve(controls)
       } catch (error) {
-        console.error("Error parsing Excel file:", error)
         reject(error)
       }
     }
 
     reader.onerror = (error) => {
-      console.error("FileReader error:", error)
       reject(error)
     }
 
-    reader.readAsArrayBuffer(file)
+    reader.readAsBinaryString(file)
   })
 }
 
-export function exportToExcel(controls: NistControl[]): void {
+export function exportToExcel(controls: NistControl[]) {
   // Convert controls to worksheet data
-  const worksheet = utils.json_to_sheet(
-    controls.map((control) => ({
-      "NIST Function": control.nistFunction,
-      "NIST Category & ID": control.nistCategoryId,
-      "NIST Sub-Category & ID": control.nistSubCategoryId,
-      "Assessment Priority": control.assessmentPriority,
-      "Control Description": control.controlDescription,
-      "Cybersecurity Domain": control.cybersecurityDomain,
-      "Meets Criteria (Yes/No)": control.meetsCriteria,
-      "Identified Risks": control.identifiedRisks,
-      "Risk Details": control.riskDetails,
-      "Remediation Status": control.remediationStatus,
-      "Last Updated": control.lastUpdated.toISOString().split("T")[0],
-    })),
-  )
+  const worksheetData = controls.map((control) => ({
+    "NIST Function": control.nist_function,
+    "NIST Category & ID": control.category,
+    "NIST Sub-Category & ID": control.subcategory,
+    "Assessment Priority": control.priority,
+    "Control Description": control.description,
+    "Cybersecurity Domain": control.category.split(" ")[0], // Simplified domain extraction
+    "Meets Criteria": control.compliance_level === 100 ? "Yes" : "No",
+    "Identified Risks": control.compliance_level < 100 ? "Yes" : "No",
+    "Risk Details": control.implementation_notes,
+    "Remediation Status": control.status,
+  }))
 
-  // Create workbook and add worksheet
-  const workbook = utils.book_new()
-  utils.book_append_sheet(workbook, worksheet, "NIST Controls")
+  // Create workbook and worksheet
+  const worksheet = XLSX.utils.json_to_sheet(worksheetData)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, "NIST Controls")
 
   // Generate Excel file and trigger download
-  utils.writeFile(workbook, "nist_controls_export.xlsx")
+  XLSX.writeFile(workbook, "nist_controls_export.xlsx")
 }

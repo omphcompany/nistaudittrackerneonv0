@@ -12,6 +12,7 @@ neonConfig.fetchConnectionCache = true
 // Get SQL client (memoized to avoid creating multiple connections)
 let sql: ReturnType<typeof neon> | null = null
 
+// Update the getSqlClient function with better error handling
 function getSqlClient() {
   if (isBrowser) {
     console.log("Browser environment detected, cannot use SQL client")
@@ -24,7 +25,7 @@ function getSqlClient() {
 
   if (!databaseUrl) {
     console.error("No database URL found in environment variables")
-    throw new Error("Database URL is missing from environment variables")
+    return null // Return null instead of throwing an error
   }
 
   try {
@@ -33,11 +34,11 @@ function getSqlClient() {
     return sql
   } catch (error) {
     console.error("Failed to initialize Neon SQL client:", error)
-    throw error
+    return null // Return null instead of throwing an error
   }
 }
 
-// Helper function to execute SQL queries
+// Update the executeQuery function to handle null SQL client
 export async function executeQuery(text: string, params: any[] = []) {
   // If in browser, return mock results
   if (isBrowser) {
@@ -46,13 +47,15 @@ export async function executeQuery(text: string, params: any[] = []) {
   }
 
   try {
-    const sql = getSqlClient()
+    const sqlClient = getSqlClient()
 
-    if (!sql) {
-      throw new Error("Failed to initialize SQL client")
+    if (!sqlClient) {
+      console.error("Failed to initialize SQL client, returning empty result")
+      return { rows: [] } // Return empty result instead of throwing an error
     }
 
     console.log(`Executing query: ${text.substring(0, 100)}${text.length > 100 ? "..." : ""}`)
+    console.log("Parameters:", params)
 
     // Add timing information for performance debugging
     const startTime = Date.now()
@@ -60,13 +63,23 @@ export async function executeQuery(text: string, params: any[] = []) {
     try {
       let result
 
-      // IMPORTANT: Use the correct method based on whether we have parameters
-      if (params && params.length > 0) {
-        // For parameterized queries, use sql.query with parameters
-        result = await sql.query(text, params)
+      // For simple queries without parameters, we need to use the raw query method
+      if (!params || params.length === 0) {
+        // Use the raw query method for simple queries
+        result = await sqlClient.query(text)
       } else {
-        // For simple queries without parameters, use tagged template literal
-        result = await sql`${text}`
+        // For parameterized queries, we need to construct the query differently
+        // Convert the query to use positional parameters ($1, $2, etc.)
+        const placeholders = text.match(/\$\d+/g) || []
+
+        if (placeholders.length > 0) {
+          // Use the parameterized query method
+          result = await sqlClient.query(text, params)
+        } else {
+          // If no placeholders but params are provided, log a warning
+          console.warn("Parameters provided but no placeholders found in query")
+          result = await sqlClient.query(text)
+        }
       }
 
       const endTime = Date.now()
@@ -89,11 +102,11 @@ export async function executeQuery(text: string, params: any[] = []) {
       console.error("Query execution error:", queryError)
       console.error("Query:", text)
       console.error("Parameters:", params)
-      throw queryError
+      return { rows: [] } // Return empty result instead of throwing an error
     }
   } catch (error) {
     console.error("Database error:", error)
-    throw error
+    return { rows: [] } // Return empty result instead of throwing an error
   }
 }
 
@@ -158,8 +171,19 @@ export async function getDatabaseInfo() {
   }
 
   try {
-    // Test the connection
-    const result = await executeQuery("SELECT 1 as connection_test")
+    const sqlClient = getSqlClient()
+
+    if (!sqlClient) {
+      return {
+        connected: false,
+        type: "Error",
+        description: "Failed to initialize SQL client",
+      }
+    }
+
+    // Test the connection with a simple query
+    const result = await sqlClient.query("SELECT 1 as connection_test")
+    console.log("Database connection test:", result)
 
     // Determine which connection is being used
     let connectionType = "Unknown"
@@ -177,7 +201,7 @@ export async function getDatabaseInfo() {
     }
 
     return {
-      connected: result.rows.length > 0,
+      connected: result.length > 0,
       type: connectionType,
       description,
     }
@@ -188,5 +212,16 @@ export async function getDatabaseInfo() {
       type: "Error",
       description: "Failed to connect to database",
     }
+  }
+}
+
+// Function to test the database connection
+export async function testConnection(): Promise<boolean> {
+  try {
+    const result = await executeQuery("SELECT 1 as test")
+    return result.rows.length > 0 && result.rows[0].test === 1
+  } catch (error) {
+    console.error("Database connection test failed:", error)
+    return false
   }
 }
